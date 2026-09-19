@@ -5,7 +5,10 @@
           - navbar-expand-lg: Hace que el menú se despliegue en pantallas grandes y se oculte en móviles.
           - navbar-dark bg-dark: Fondo oscuro oficial con letras claras.
           - sticky-top: Mantiene la barra anclada arriba de la pantalla aunque hagamos scroll hacia abajo. */
-          
+
+import ThemeToggle from "./ThemeToggle";  
+
+
 function Navbar() {
     return (
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
@@ -34,6 +37,9 @@ function Navbar() {
               </li>
               <li className="nav-item">
                 <a className="nav-link" href="#contacto">Contacto</a>
+              </li>
+              <li className="nav-item">
+                <ThemeToggle />
               </li>
             </ul>
           </div>
