@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
 function ThemeToggle() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -6,7 +8,10 @@ function ThemeToggle() {
   });
 
   useEffect(() => {
-    document.body.classList.toggle("dark-mode", darkMode);
+    document.documentElement.classList.toggle(
+      "dark-mode",
+      darkMode
+    );
 
     localStorage.setItem(
       "theme",
@@ -30,7 +35,9 @@ function ThemeToggle() {
           : "Activar modo oscuro"
       }
     >
-      {darkMode ? "☀" : "☾"}
+      <FontAwesomeIcon
+        icon={darkMode ? faSun : faMoon}
+      />
     </button>
   );
 }

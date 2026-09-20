@@ -1,3 +1,5 @@
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 function ProjectCard({ proyecto }) {
   return (
     <article className="project-card">
@@ -28,6 +30,7 @@ function ProjectCard({ proyecto }) {
           {proyecto.descripcion}
         </p>
 
+        // Renderiza las tecnologías utilizadas en el proyecto
         <div className="project-card__technologies">
 
           {proyecto.tecnologias.map((tech, index) => (
@@ -42,7 +45,8 @@ function ProjectCard({ proyecto }) {
           type="button"
           className="project-card__button"
         >
-          Ver proyecto <span>↗</span>
+          Ver proyecto 
+          <FontAwesomeIcon icon={faArrowUpRightFromSquare} />
         </button>
 
       </div>

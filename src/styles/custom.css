@@ -47,6 +47,7 @@ a {
     background-color var(--transition),
     border-color var(--transition),
     transform var(--transition);
+    border-radius: 5px;
 }
 
 
@@ -167,7 +168,7 @@ a {
   font-size: clamp(4rem, 10vw, 9rem);
   font-weight: 800;
 
-  line-height: 0.84;
+  line-height: 0.95;
   letter-spacing: -0.08em;
 
   text-transform: uppercase;
@@ -175,6 +176,7 @@ a {
 
 .hero__title span {
   color: var(--color-accent);
+  display: inline-block;
 }
 
 .hero__bottom {
@@ -234,6 +236,34 @@ a {
 .hero__button span {
   font-size: 1rem;
 }
+
+
+/* ==========================================
+   Animation Lab
+   ========================================== */
+
+.animation-lab {
+  padding: 2rem 0;
+  background-color: var(--color-bg);
+  overflow: hidden;
+}
+
+.animation-lab__grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.animation-lab__square {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  background-color: var(--color-accent);
+  opacity: 0.18;
+}
+
 
 
 /* ==========================================
@@ -514,6 +544,15 @@ a {
 
 .project-card__button:hover {
   color: var(--color-accent);
+}
+
+.project-card__button svg {
+  margin-left: 0.5rem;
+  font-size: 0.85em;
+}
+
+.project-card__button:hover svg {
+  transform: translate(2px, -2px);
 }
 
 
