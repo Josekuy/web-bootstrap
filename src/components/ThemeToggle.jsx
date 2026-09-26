@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSun, faMoon } from "@fortawesome/free-solid-svg-icons";
 
-function ThemeToggle() {
-  const [darkMode, setDarkMode] = useState(() => {
+function ThemeToggle({ className = "" }) {
+    const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark";
   });
 
@@ -22,7 +22,7 @@ function ThemeToggle() {
   return (
     <button
       type="button"
-      className="theme-toggle"
+      className={`theme-toggle ${className}`}
       onClick={() => setDarkMode(!darkMode)}
       aria-label={
         darkMode

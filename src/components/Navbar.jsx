@@ -6,45 +6,61 @@
           - navbar-dark bg-dark: Fondo oscuro oficial con letras claras.
           - sticky-top: Mantiene la barra anclada arriba de la pantalla aunque hagamos scroll hacia abajo. */
 
-import ThemeToggle from "./ThemeToggle";  
+import ThemeToggle from "./ThemeToggle";
 
+const navItems = [
+  { label: "Proyectos", href: "#proyectos" },
+  { label: "Sobre mí", href: "#sobre-mi" },  
+  { label: "Fotografía", href: "#fotografia" },
+  { label: "Contacto", href: "#contacto" },
+];
 
 function Navbar() {
-    return (
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div className="container">
-          <a className="navbar-brand fw-bold" href="#">Portfolio | UI & Dev</a>
-          
-          {/* Botón de hamburguesa para dispositivos móviles */}
-          <button 
-            className="navbar-toggler" 
-            type="button" 
-            data-bs-toggle="collapse" 
-            data-bs-target="#navbarNav"
-          >
-            <span className="navbar-toggler-icon"></span>
-          </button>
+  return (
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+      <div className="container">
 
-          {/* Bloque que se oculta/muestra con el botón de hamburguesa */}
-          <div className="collapse navbar-collapse" id="navbarNav">
-            {/* ms-auto (Margin Start: auto) empuja todos los enlaces de la lista hacia la extrema derecha */}
-            <ul className="navbar-nav ms-auto">
-              <li className="nav-item">
-                <a className="nav-link active" href="#proyectos">Proyectos</a>
+        <a className="navbar-brand fw-bold" href="#">
+          Portfolio | UI & Dev
+        </a>
+
+        {/* Menú principal */}
+        <div className="collapse navbar-collapse" id="navbarNav">
+          <ul className="navbar-nav ms-auto">
+
+            {navItems.map((item) => (
+              <li className="nav-item" key={item.href}>
+                <a
+                  className="nav-link"
+                  href={item.href}
+                >
+                  {item.label}
+                </a>
               </li>
-              <li className="nav-item">
-                <a className="nav-link" href="#sobre-mi">Sobre mí</a>
-              </li>
-              <li className="nav-item">
-                <a className="nav-link" href="#contacto">Contacto</a>
-              </li>
-              <li className="nav-item">
-                <ThemeToggle />
-              </li>
-            </ul>
-          </div>
+            ))}
+
+          </ul>
         </div>
-      </nav>
-    );
+
+        {/* Cambio de tema: siempre visible */}
+        <ThemeToggle className="ms-lg-5" />
+
+        {/* Hamburguesa */}
+        <button
+          className="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+          aria-controls="navbarNav"
+          aria-expanded="false"
+          aria-label="Abrir navegación"
+        >
+          <span className="navbar-toggler-icon"></span>
+        </button>
+
+      </div>
+    </nav>
+  );
 }
+
 export default Navbar;

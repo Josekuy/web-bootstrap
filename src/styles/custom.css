@@ -47,7 +47,6 @@ a {
     background-color var(--transition),
     border-color var(--transition),
     transform var(--transition);
-    border-radius: 5px;
 }
 
 
@@ -59,9 +58,11 @@ a {
   padding: 1.1rem 0;
 
   background-color: #050505 !important;
-
   border-bottom: 1px solid var(--color-border);
 }
+
+
+/* ------ Marca ------ */
 
 .navbar-brand {
   color: var(--color-muted) !important;
@@ -76,6 +77,9 @@ a {
 .navbar-brand:hover {
   color: var(--color-accent) !important;
 }
+
+
+/* ------ Navegación ------ */
 
 .navbar-nav {
   gap: 0.8rem;
@@ -97,13 +101,8 @@ a {
   color: var(--color-accent) !important;
 }
 
-.navbar-toggler {
-  border: 1px solid var(--color-border);
-}
 
-.navbar-toggler:focus {
-  box-shadow: 0 0 0 2px rgba(57, 255, 20, 0.2);
-}
+/* ------ Toggle claro / oscuro ------ */
 
 .theme-toggle {
   display: inline-flex;
@@ -113,8 +112,6 @@ a {
   width: 38px;
   height: 38px;
 
-  margin-left: 0.5rem;
-
   border: 1px solid #555;
   border-radius: 50%;
 
@@ -122,15 +119,73 @@ a {
   color: #ffffff;
 
   font-size: 1rem;
-
   cursor: pointer;
 }
 
 .theme-toggle:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
+
   transform: rotate(15deg);
 }
+
+
+/* ------ Toggle hamburguesa ------ */
+
+.navbar-toggler {
+  border: 1px solid #555;
+  border-radius: 5px;
+
+  box-shadow: none;
+}
+
+.navbar-toggler:hover {
+  border-color: var(--color-accent);
+}
+
+.navbar-toggler:focus {
+  box-shadow: none;
+}
+
+.navbar-toggler:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.navbar-toggler-icon {
+  display: inline-block;
+
+  width: 1.5em;
+  height: 1.5em;
+
+  vertical-align: middle;
+
+  background-color: #ffffff;
+
+  mask:
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23000' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e")
+    no-repeat center / contain;
+
+  -webkit-mask:
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23000' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e")
+    no-repeat center / contain;
+}
+
+.navbar-toggler:hover .navbar-toggler-icon {
+  background-color: var(--color-accent);
+}
+
+
+/* ------ Responsive ------ */
+
+@media (max-width: 991.98px) {
+  .theme-toggle {
+    margin-left: auto;
+    margin-right: 0.75rem;
+  }
+}
+
+
 
 /* ==========================================
    HERO

@@ -1,3 +1,7 @@
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+
 function Hero() {
   
   // ---- Devuelve bloque html   
@@ -21,7 +25,7 @@ function Hero() {
           </p>
 
           <a href="#proyectos" className="hero__button">
-            Ver proyectos →
+            Ver proyectos <FontAwesomeIcon icon={faMagnifyingGlass} className="fs-4" />
           </a>
         </div>
       </div>
