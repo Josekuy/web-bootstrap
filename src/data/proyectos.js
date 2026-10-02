@@ -32,7 +32,7 @@
       id: 4,
       titulo: "Portada de disco",
       descripcion: "Diseño de portada para álbum musical con enfoque en la estética visual y el mensaje del artista.",
-      categoria: "Diseño Gráfico",
+      categoria: "Ilustración & Diseño Gráfico",
       tecnologias: ["Photoshop", "Illustrator", "Indesign", "After Effects"],
       imagen: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600&auto=format&fit=crop"
     }

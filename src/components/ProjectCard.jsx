@@ -30,7 +30,7 @@ function ProjectCard({ proyecto }) {
           {proyecto.descripcion}
         </p>
 
-        // Renderiza las tecnologías utilizadas en el proyecto
+        {/*  Renderiza las tecnologías utilizadas en el proyecto */}
         <div className="project-card__technologies">
 
           {proyecto.tecnologias.map((tech, index) => (

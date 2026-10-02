@@ -27,7 +27,12 @@ function Navbar() {
         {/* Menú principal */}
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav ms-auto">
-
+            
+            {/* Los elementos del menú se generan dinámicamente a partir de un array de objetos, 
+            lo que permite agregar o quitar elementos fácilmente sin modificar el código HTML directamente. 
+            Cada elemento del menú es un enlace que apunta a una sección específica de la página mediante un identificador (href). 
+            Esto facilita la navegación dentro de la misma página y mejora la experiencia del usuario. */}
+            
             {navItems.map((item) => (
               <li className="nav-item" key={item.href}>
                 <a
