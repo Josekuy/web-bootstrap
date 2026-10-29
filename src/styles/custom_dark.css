@@ -18,10 +18,6 @@ html.dark-mode {
    DARK MODE OVERRIDES
    ========================================== */
 
-html.dark-mode .projects {
-  background-color: var(--color-surface);
-}
-
 html.dark-mode .project-card {
   border-color: var(--color-accent);
 }
