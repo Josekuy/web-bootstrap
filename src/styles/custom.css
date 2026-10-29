@@ -269,6 +269,7 @@ a {
   padding: 1rem 1.4rem;
 
   border: 1px solid var(--color-accent);
+  border-radius: 8px;
 
   background-color: var(--color-accent);
   color: #050505;
@@ -410,6 +411,7 @@ a {
   background-color: var(--color-surface);
 
   border: 1px solid var(--color-border);
+  border-radius: 8px;
 
   overflow: hidden;
 
