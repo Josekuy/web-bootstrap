@@ -1,31 +1,23 @@
-
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { presentacion } from "../data/contenido";
 
-function Hero() {
-  
-  // ---- Devuelve bloque html   
+// La presentación recibe contenido separado del diseño para poder alimentarse de una API.
+function Presentacion({ datos = presentacion }) {
   return (
-    <header className="hero">
+    <header className="hero" id="inicio">
       <div className="container">
-        <p className="hero__eyebrow">
-          Graphic Design · Web Development
-        </p>
-
+        <p className="hero__eyebrow">{datos.especialidad}</p>
         <h1 className="hero__title">
-          Diseño
+          {datos.titulo[0]}
           <br />
-          <span>+</span> Código
+          <span>+</span> {datos.titulo[1]}
         </h1>
-
         <div className="hero__bottom">
-          <p className="hero__description">
-            Creo experiencias digitales donde el diseño gráfico
-            se encuentra con el desarrollo web.
-          </p>
-
-          <a href="#proyectos" className="hero__button">
-            Ver proyectos <FontAwesomeIcon icon={faMagnifyingGlass} className="fs-4" />
+          <p className="hero__description">{datos.descripcion}</p>
+          <a href={datos.accion.href} className="hero__button">
+            {datos.accion.etiqueta}
+            <FontAwesomeIcon icon={faMagnifyingGlass} className="fs-4" />
           </a>
         </div>
       </div>
@@ -33,4 +25,4 @@ function Hero() {
   );
 }
 
-export default Hero;
+export default Presentacion;

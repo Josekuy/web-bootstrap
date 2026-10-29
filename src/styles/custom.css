@@ -9,6 +9,7 @@
   --color-text: #2c2b2b;
   --color-muted: #716d67;
   --color-accent: #ff5b35;
+  --color-accent-text: #b83314;
   --color-border: #181818;
   --color-border-hover: #ff5b35;
   --font-display: "Montserrat", sans-serif;
@@ -24,6 +25,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
 }
 
 body {
@@ -65,7 +67,7 @@ a {
 /* ------ Marca ------ */
 
 .navbar-brand {
-  color: var(--color-muted) !important;
+  color: #bdbdbd !important;
 
   font-family: var(--font-display);
   font-size: 1rem;
@@ -202,7 +204,7 @@ a {
 .hero__eyebrow {
   margin: 0 0 2rem;
 
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 
   font-family: var(--font-display);
   font-size: 0.7rem;
@@ -347,7 +349,7 @@ a {
 .projects__eyebrow {
   margin: 0 0 0.8rem;
 
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 
   font-family: var(--font-display);
   font-size: 0.7rem;
@@ -495,11 +497,11 @@ a {
 }
 
 .project-card__meta span:first-child {
-  color: var(--color-accent);
+  color: var(--color-accent-text);
 }
 
 .project-card__meta span:last-child {
-  color: #555555;
+  color: var(--color-muted);
 }
 
 .project-card__title {
@@ -701,7 +703,201 @@ a {
 
 
 /* ==========================================
-   REDUCED MOTION
+   SECCIONES DE CONTENIDO Y GALERÍA
+   ========================================== */
+
+.content-section {
+  padding: 5rem 0;
+  border-top: 1px solid var(--color-border);
+  background-color: var(--color-bg);
+}
+
+.content-section__eyebrow {
+  margin: 0 0 1rem;
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.content-section__title {
+  margin: 0 0 1.5rem;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  overflow-wrap: anywhere;
+}
+
+.content-section__text {
+  max-width: 70ch;
+  color: var(--color-muted);
+  line-height: 1.9;
+}
+
+.content-section__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  padding: 0;
+  list-style: none;
+}
+
+.content-section a {
+  color: var(--color-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+  overflow-wrap: anywhere;
+}
+
+.photography__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 2rem;
+}
+
+.photography__item {
+  margin: 0;
+  min-width: 0;
+}
+
+.photography__image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* ==========================================
+   FICHA DE PROYECTO
+   ========================================== */
+
+.project-detail {
+  --bs-modal-width: 760px;
+  --bs-modal-bg: var(--color-surface);
+  --bs-modal-color: var(--color-text);
+  --bs-modal-border-color: var(--color-accent);
+  --bs-modal-border-radius: 8px;
+  --bs-modal-header-border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.modal-backdrop {
+  --bs-backdrop-opacity: 0.7;
+}
+
+.project-detail__dialog {
+  max-width: min(760px, calc(100% - 2rem));
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.project-detail__content {
+  overflow-wrap: anywhere;
+}
+
+.project-detail__body {
+  padding: clamp(1rem, 4vw, 2rem);
+  overscroll-behavior: contain;
+}
+
+.project-detail__header {
+  align-items: start;
+  gap: 1rem;
+  padding: clamp(1rem, 4vw, 2rem);
+}
+
+.project-detail__category {
+  margin: 0 0 0.75rem;
+  color: var(--color-accent-text);
+  font-size: 0.8rem;
+}
+
+.project-detail .btn-close {
+  flex-shrink: 0;
+}
+
+.project-detail__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
+  font-weight: 800;
+  margin: 0;
+}
+
+.project-detail__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.project-detail__description {
+  color: var(--color-muted);
+  line-height: 1.8;
+}
+
+.project-detail__technologies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.project-detail__technologies li {
+  border: 1px solid var(--color-muted);
+  border-radius: 2rem;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.project-detail__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin-top: 1.5rem;
+}
+
+.project-detail__links a {
+  color: var(--color-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* El foco y el enlace de salto permiten recorrer la página sin ratón. */
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--color-accent-text);
+  outline-offset: 4px;
+}
+
+.navbar a:focus-visible,
+.navbar button:focus-visible {
+  outline-color: var(--color-accent);
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1100;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* ==========================================
+   MOVIMIENTO REDUCIDO
    ========================================== */
 
 @media (prefers-reduced-motion: reduce) {

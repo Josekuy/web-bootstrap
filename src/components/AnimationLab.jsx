@@ -1,139 +1,171 @@
 import { useEffect, useRef, useState } from "react";
-import { animate, stagger } from "animejs";
+import { createAnimatable, createTimeline } from "animejs";
 
-function AnimationLab() {
-  const root = useRef(null);
+// Ajusta una fila decorativa al espacio disponible y coordina su animación e interacción.
+function LaboratorioAnimacion() {
+  const raiz = useRef(null);
+  const rejilla = useRef(null);
+  const [cantidadCuadrados, establecerCantidadCuadrados] = useState(0);
 
-  const getSquareCount = (width) => {
-    const squareSize = 24;
-    const gap = 8;
-
-    const count = Math.floor(
-      width / (squareSize + gap)
-    );
-
-    return Math.max(8, Math.min(count, 40));
-  };
-
-  const [squareCount, setSquareCount] = useState(32);
-
-  const squares = Array.from({ length: squareCount });
-
-  // Observamos el tamaño del contenedor
   useEffect(() => {
-    const element = root.current;
+    const elementoRejilla = rejilla.current;
 
-    if (!element) return;
+    if (!elementoRejilla) return;
 
-    const container = element.querySelector(".container");
-
-    if (!container) return;
-
-    const updateSquares = () => {
-      setSquareCount(
-        getSquareCount(container.clientWidth)
+    const actualizarCantidad = () => {
+      const anchoDisponible = elementoRejilla.getBoundingClientRect().width;
+      const separacionCalculada = Number.parseFloat(
+        getComputedStyle(elementoRejilla).columnGap
       );
+      const separacion = Number.isFinite(separacionCalculada)
+        ? separacionCalculada
+        : 8;
+
+      // N cuadrados ocupan N * 24 + (N - 1) huecos. Medimos el grid sin el padding del container.
+      const cantidad = Math.floor(
+        (anchoDisponible + separacion) / (24 + separacion)
+      );
+
+      establecerCantidadCuadrados(Math.max(0, Math.min(cantidad, 40)));
     };
 
-    updateSquares();
+    actualizarCantidad();
 
-    const observer = new ResizeObserver(updateSquares);
+    const observador = new ResizeObserver(actualizarCantidad);
+    observador.observe(elementoRejilla);
 
-    observer.observe(container);
-
-    return () => {
-      observer.disconnect();
-    };
+    return () => observador.disconnect();
   }, []);
 
-  // Animaciones
   useEffect(() => {
-    const element = root.current;
+    const elementoRaiz = raiz.current;
+    const elementoRejilla = rejilla.current;
 
-    if (!element) return;
+    if (!elementoRaiz || !elementoRejilla || cantidadCuadrados === 0) return;
 
-    const squareElements = element.querySelectorAll(
-      ".animation-lab__square"
+    const cuadrados = Array.from(
+      elementoRejilla.querySelectorAll(".animation-lab__square")
     );
+    const preferenciaMovimiento = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    );
+    let detenerAnimaciones = () => {};
 
-    // Loader retro
-    squareElements.forEach((square, index) => {
-      animate(square, {
-        opacity: [0.18, 1, 0.18],
-        duration: 1200,
-        delay: index * 100,
-        ease: "linear",
+    const actualizarMovimiento = () => {
+      // También limpiamos al cambiar esta preferencia con la página ya abierta.
+      detenerAnimaciones();
+      detenerAnimaciones = () => {};
+
+      if (preferenciaMovimiento.matches) return;
+
+      // Una sola secuencia mantiene los pulsos sincronizados: avanzan y se apagan detrás.
+      const secuencia = createTimeline({
+        autoplay: false,
         loop: true,
+        defaults: { ease: "linear" },
       });
-    });
 
-    // Reacción al ratón
-    const handleMouseMove = (event) => {
-      squareElements.forEach((square) => {
-        const rect = square.getBoundingClientRect();
-
-        const center = rect.left + rect.width / 2;
-        const distance = Math.abs(
-          event.clientX - center
+      cuadrados.forEach((cuadrado, indice) => {
+        secuencia.add(
+          cuadrado,
+          {
+            opacity: [
+              { from: 0.18, to: 1, duration: 180 },
+              { to: 0.18, duration: 620 },
+            ],
+          },
+          indice * 100
         );
+      });
 
-        const maxDistance = 180;
+      secuencia.play();
 
-        const influence = Math.max(
-          0,
-          1 - distance / maxDistance
-        );
-
-        animate(square, {
-          y: -12 * influence,
-          scale: 1 + 0.35 * influence,
-          duration: 250,
+      // Reutilizamos estas animaciones; mover el ratón no crea nuevas instancias.
+      const movimientos = cuadrados.map((cuadrado) =>
+        createAnimatable(cuadrado, {
+          y: 250,
+          scale: 250,
           ease: "out(3)",
+        })
+      );
+      let posicionPuntero = 0;
+      let fotogramaPendiente = null;
+
+      const actualizarProximidad = () => {
+        fotogramaPendiente = null;
+
+        // Primero leemos las posiciones y después actualizamos las animaciones.
+        const centros = cuadrados.map((cuadrado) => {
+          const limites = cuadrado.getBoundingClientRect();
+          return limites.left + limites.width / 2;
         });
-      });
+
+        movimientos.forEach((movimiento, indice) => {
+          const distancia = Math.abs(posicionPuntero - centros[indice]);
+          const influencia = Math.max(0, 1 - distancia / 180);
+
+          movimiento.y(-12 * influencia);
+          movimiento.scale(1 + 0.35 * influencia);
+        });
+      };
+
+      const manejarMovimiento = (evento) => {
+        posicionPuntero = evento.clientX;
+
+        // Agrupamos los eventos en una sola actualización por fotograma.
+        if (fotogramaPendiente === null) {
+          fotogramaPendiente = requestAnimationFrame(actualizarProximidad);
+        }
+      };
+
+      const cancelarFotograma = () => {
+        if (fotogramaPendiente !== null) {
+          cancelAnimationFrame(fotogramaPendiente);
+          fotogramaPendiente = null;
+        }
+      };
+
+      const manejarSalida = () => {
+        cancelarFotograma();
+        movimientos.forEach((movimiento) => {
+          movimiento.y(0, 500);
+          movimiento.scale(1, 500);
+        });
+      };
+
+      elementoRaiz.addEventListener("mousemove", manejarMovimiento);
+      elementoRaiz.addEventListener("mouseleave", manejarSalida);
+
+      detenerAnimaciones = () => {
+        cancelarFotograma();
+        elementoRaiz.removeEventListener("mousemove", manejarMovimiento);
+        elementoRaiz.removeEventListener("mouseleave", manejarSalida);
+
+        // revert() detiene las instancias y restaura los estilos, también en StrictMode.
+        movimientos.forEach((movimiento) => movimiento.revert());
+        secuencia.revert();
+      };
     };
 
-    const handleMouseLeave = () => {
-      animate(squareElements, {
-        y: 0,
-        scale: 1,
-        duration: 500,
-        ease: "out(3)",
-      });
-    };
-
-    element.addEventListener(
-      "mousemove",
-      handleMouseMove
-    );
-
-    element.addEventListener(
-      "mouseleave",
-      handleMouseLeave
-    );
+    actualizarMovimiento();
+    preferenciaMovimiento.addEventListener("change", actualizarMovimiento);
 
     return () => {
-      element.removeEventListener(
-        "mousemove",
-        handleMouseMove
-      );
-
-      element.removeEventListener(
-        "mouseleave",
-        handleMouseLeave
-      );
+      preferenciaMovimiento.removeEventListener("change", actualizarMovimiento);
+      detenerAnimaciones();
     };
-  }, [squareCount]);
+  }, [cantidadCuadrados]);
 
   return (
-    <section className="animation-lab" ref={root}>
+    <section className="animation-lab" ref={raiz} aria-hidden="true">
       <div className="container">
-        <div className="animation-lab__grid">
-          {squares.map((_, index) => (
-            <div
-              key={index}
-              className="animation-lab__square"
-            />
+        <div
+          className="animation-lab__grid"
+          ref={rejilla}
+          style={{ minHeight: "24px" }}
+        >
+          {Array.from({ length: cantidadCuadrados }, (cuadrado, indice) => (
+            <div key={indice} className="animation-lab__square" />
           ))}
         </div>
       </div>
@@ -141,4 +173,4 @@ function AnimationLab() {
   );
 }
 
-export default AnimationLab;
+export default LaboratorioAnimacion;

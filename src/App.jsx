@@ -1,29 +1,30 @@
+import BarraNavegacion from "./components/Navbar";
+import Presentacion from "./components/Hero";
+import Proyectos from "./components/Projects";
+import LaboratorioAnimacion from "./components/AnimationLab";
+import SobreMi from "./components/SobreMi";
+import Fotografia from "./components/Fotografia";
+import Contacto from "./components/Contacto";
 
+import "./styles/custom.css";
+import "./styles/custom_dark.css";
 
-import Navbar from "./components/Navbar"; // Importamos el componente Navbar desde su archivo correspondiente.  
-import Hero from "./components/Hero"; // Importamos el componente Hero desde su archivo correspondiente.
-import Projects from "./components/Projects"; // Importamos el componente Projects desde su archivo correspondiente.
-import AnimationLab from "./components/AnimationLab"; // Importamos el componente AnimationLab desde su archivo correspondiente.
-
-import "./styles/custom.css";// Importamos el archivo de estilos CSS claros.
-import "./styles/custom_dark.css" ;// Importamos el archivo de estilos CSS dark.
-
-function App() {
-
-// ==========================================
-// COMPONENTE PRINCIPAL: App.jsx
-// ==========================================
-// Este es el componente raíz de nuestra aplicación de React.
-// Todo lo que escribas aquí (dentro del return) es lo que se inyecta y dibuja en el navegador.
-
+// Organiza las secciones. Los nombres propios están en español; las clases CSS se conservan.
+function Aplicacion() {
   return (
     <>
-      <Navbar />
-      <Hero />
-      <AnimationLab />
-      <Projects />  
+      <a className="skip-link" href="#contenido">Ir al contenido principal</a>
+      <BarraNavegacion />
+      <main id="contenido" tabIndex={-1}>
+        <Presentacion />
+        <LaboratorioAnimacion />
+        <Proyectos />
+        <SobreMi />
+        <Fotografia />
+        <Contacto />
+      </main>
     </>
-  )
+  );
 }
 
-export default App
+export default Aplicacion;

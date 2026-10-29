@@ -1,5 +1,7 @@
 Informe del portfolio React — 29 de octubre de 2026
 
+Este diagnóstico conserva el estado inicial de la revisión. Las correcciones posteriores se recogen en la actualización al final.
+
 La base del proyecto permite evolucionar hacia un portfolio administrable conservando sus componentes y diseño. Actualmente es un portfolio con contenido estático: la interfaz tiene estructura propia e interacciones, pero quedan acciones por completar y todavía no existen API, base de datos ni panel.
 
 **Arquitectura y funcionamiento actuales.** React 19 y Vite 8 montan una única página. `main.jsx` carga Bootstrap 5 y activa `StrictMode`; `App.jsx` compone `Navbar`, `Hero`, `AnimationLab` y `Projects`. Este último recorre los cuatro registros de `src/data/proyectos.js` y los entrega a `ProjectCard`.
@@ -62,3 +64,15 @@ Si más adelante cada proyecto necesita posicionamiento y vista previa propia al
 **Valoración.** Mantendría React/Vite y desarrollaría Express + MySQL por módulos. El primer hito útil sería publicar una fotografía desde un panel protegido y verla en el portfolio sin editar código. Ese recorrido validaría la arquitectura antes de extenderla. La capacidad real dependerá del alojamiento, volumen de imágenes y tráfico medido.
 
 **Comprobaciones realizadas.** La compilación de producción pasa. ESLint falla por el import no utilizado de `stagger` en `AnimationLab.jsx:2`. La salida contiene aproximadamente 123 kB de JavaScript y 32,8 kB de CSS comprimidos con gzip, sin contar imágenes. La revisión cubre código y compilación; queda pendiente la comprobación visual y funcional en navegador. Solo se ha añadido este informe, sin modificar el código de la aplicación.
+
+**Actualización: primer paso implementado.** Se han corregido los comentarios JSX, completado los destinos de navegación y añadido fichas locales de proyecto. El menú móvil espera a cerrar antes de desplazarse al destino. Las animaciones liberan sus instancias y respetan el movimiento reducido también si se cambia durante la visita. Se han personalizado metadatos, cargado las fuentes y mejorado el foco y el contraste de textos pequeños.
+
+Los componentes y funciones propios utilizan nombres y comentarios en español; se conserva el nombre de los archivos existentes y las APIs externas. Sobre mí y Contacto utilizan Lorem ipsum por indicación del usuario. La galería queda preparada con una colección vacía y el contacto admite correo y enlaces opcionales.
+
+Los contratos locales incluyen identificadores estables, slug, orden, estado de publicación, texto alternativo y URL opcionales. Se documentan en [contrato-datos.md](contrato-datos.md); las equivalencias de funciones están en [guia-funciones.md](guia-funciones.md).
+
+La compilación y ESLint pasan. Las comprobaciones de datos y enlaces pasan; el script `scripts/comprobar-navegador.cjs` supera 19 comprobaciones en Chrome real, con navegación móvil, posición del destino, fichas, foco, tema persistente, tamaños de 320 a 1280 px y movimiento reducido en vivo. El siguiente hito es implementar fotografía con Express, MySQL y panel protegido.
+
+**Cambio posterior en la ficha.** Por decisión del usuario se sustituye el diálogo HTML por el modal oficial de Bootstrap 5. `ProjectDetail.jsx` contiene el modal y `ProjectCard.jsx` lo abre con los atributos de Bootstrap. Se utiliza `btn-close` con `data-bs-dismiss="modal"`; el plugin gestiona Escape, fondo y foco. El tema también configura `data-bs-theme` para adaptar los componentes de Bootstrap. La ficha conserva los datos y el diseño del portfolio.
+
+Esta migración pasa compilación, ESLint y 33 comprobaciones en Chrome real. Se verifican los cuatro proyectos, cierres mediante Escape, X y fondo, retorno del foco, retirada del fondo y del bloqueo de scroll, temas claro y oscuro y desplazamiento interno en móvil con el botón de cierre accesible.

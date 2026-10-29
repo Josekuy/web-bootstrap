@@ -1,18 +1,35 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web-bootstrap</title>
+    <title>José | Diseño y desarrollo web</title>
+    <meta name="description" content="Portfolio de José: una selección de proyectos de diseño gráfico y desarrollo web." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_ES" />
+    <meta property="og:title" content="José | Diseño y desarrollo web" />
+    <meta property="og:description" content="Una selección de proyectos donde se encuentran el diseño gráfico y el desarrollo web." />
+    <meta name="twitter:card" content="summary" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet" />
 
-    <!-- // ---- Gestión de tema (claro / oscuro) ---- // -->
+    <!-- Aplica el tema antes de pintar la página para evitar un destello del tema contrario. -->
     <script>
-      const theme = localStorage.getItem("theme");
-
-      if (theme === "dark") {
-        document.documentElement.classList.add("dark-mode");
+      function aplicarTemaInicial() {
+        let temaGuardado = null;
+        try {
+          temaGuardado = localStorage.getItem("theme");
+        } catch {
+          // La página también funciona si el navegador bloquea el almacenamiento.
+        }
+        const usarTemaOscuro = temaGuardado === "dark"
+          || (temaGuardado !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark-mode", usarTemaOscuro);
+        document.documentElement.dataset.bsTheme = usarTemaOscuro ? "dark" : "light";
       }
+      aplicarTemaInicial();
     </script>
     
   </head>
