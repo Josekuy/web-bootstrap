@@ -5,6 +5,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
+    // La misma dirección local que utilizan la documentación y los comprobadores.
+    host: '127.0.0.1',
     proxy: {
       '/api': 'http://127.0.0.1:3001',
     },

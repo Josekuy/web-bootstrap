@@ -39,7 +39,8 @@ Requiere Node 22.12 o posterior y MySQL/MariaDB. La instalación local utiliza X
 | `npm run admin:crear` | Crea el usuario de `.env`; conserva una cuenta existente. |
 | `npm run proyectos:importar` | Importa una sola vez los cuatro proyectos antiguos, sin sobrescribir slugs existentes. |
 | `npm run api` | API en modo observación, por defecto `127.0.0.1:3001`. |
-| `npm run dev` | Vite en 5173, con proxy `/api` hacia 3001. |
+| `npm run dev` | API y Vite juntos con `concurrently`; `Ctrl+C` detiene ambos. Requiere MySQL activo. |
+| `npm run dev:web` | Solo Vite en 5173, con proxy `/api` hacia 3001; requiere iniciar la API aparte. |
 | `npm run test:api` | Pruebas Node de imágenes, validación y las integraciones de fotografías y proyectos con BD. |
 | `npm run comprobar:navegador` | Comprueba la portada con API y Vite activos. |
 | `npm run comprobar:admin` | Comprueba el panel con API y Vite activos. |
@@ -47,7 +48,9 @@ Requiere Node 22.12 o posterior y MySQL/MariaDB. La instalación local utiliza X
 | `npm run build` | Genera el frontend en `dist/`. |
 | `npm start` | Inicia Express sin observación; en producción sirve también `dist/`. |
 
-Tras instalar y generar `.env`, inicia MySQL y ajusta las variables de conexión si procede. Ejecuta `db:preparar` y `admin:crear`; usa después `proyectos:importar` si quieres migrar los ejemplos originales. Arranca API y Vite en terminales distintas y abre `/admin` desde Vite. Las credenciales iniciales están en `ADMIN_USUARIO` y `ADMIN_CONTRASENA` del archivo local; no se incluyen aquí ni se imprimen en los comandos.
+Tras instalar y generar `.env`, inicia MySQL y ajusta las variables de conexión si procede. Ejecuta `db:preparar` y `admin:crear`; usa después `proyectos:importar` si quieres migrar los ejemplos originales. Ejecuta `npm run dev` y abre `/admin` desde Vite. Para trabajar en terminales distintas usa `npm run api` y `npm run dev:web`, sin mantener simultáneamente el arranque conjunto. Las credenciales iniciales están en `ADMIN_USUARIO` y `ADMIN_CONTRASENA` del archivo local; no se incluyen aquí ni se imprimen en los comandos.
+
+El error de Vite `ECONNREFUSED 127.0.0.1:3001` indica que Express no está escuchando en ese destino. Revisa el bloque `API` de la terminal: MySQL debe estar activo en XAMPP y los datos de conexión de `.env` deben ser correctos. El proxy no sustituye al proceso del backend.
 
 ### Configuración
 

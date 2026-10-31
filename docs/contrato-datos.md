@@ -83,7 +83,7 @@ Una lista vacía responde `200`. La creación responde `201` con `{ "datos": Fot
 
 Las URL externas solo se validan: el backend no las descarga ni las utiliza para consultar servidores remotos. El proveedor externo controla su disponibilidad y privacidad; guardar el proyecto como borrador no vuelve privado un archivo alojado allí. La política de contenido de la web admite imágenes HTTPS.
 
-La galería incorpora estados de carga, vacío, error y reintento, y carga más páginas bajo demanda. Recibir la propiedad `fotografias` desactiva su consulta a la API y permite reutilizar la vista con una colección explícita; el filtrado de esa colección solo afecta a su presentación.
+La galería Swiper incorpora estados de carga, vacío, error y reintento, y carga más páginas bajo demanda sin reiniciar su posición. Utiliza `ancho` y `alto` para reservar proporciones y presenta la imagen completa dentro del marco. Recibir la propiedad `fotografias` desactiva su consulta a la API y permite reutilizar la vista con una colección explícita; el filtrado de esa colección solo afecta a su presentación. El carrusel no cambia el contrato ni requiere campos nuevos en MySQL.
 
 ## Presentación, navegación y contacto
 

@@ -1,0 +1,272 @@
+/* Galería horizontal: las imágenes mantienen su encuadre y los controles usan el tema del portfolio. */
+.content-section.photography {
+  padding: 6rem 0 6.5rem;
+}
+
+.photography__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
+  align-items: end;
+  gap: 2rem 3rem;
+  margin-bottom: 2.75rem;
+}
+
+.photography__heading {
+  min-width: 0;
+}
+
+.photography__heading .content-section__title {
+  max-width: 12ch;
+  margin-bottom: 0;
+  font-size: clamp(2.6rem, 5vw, 5rem);
+  line-height: 1.04;
+  letter-spacing: -0.055em;
+}
+
+.photography__intro {
+  max-width: 32ch;
+  margin: 0 0 0.2rem;
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.85;
+}
+
+.photography__gallery {
+  min-width: 0;
+}
+
+.photography__slider {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.photography__slider:focus-visible {
+  outline: 3px solid var(--color-accent-text);
+  outline-offset: 6px;
+}
+
+.photography__slider .swiper-wrapper {
+  align-items: stretch;
+}
+
+.photography__slider .photography__slide {
+  display: flex;
+  height: auto;
+  min-width: 0;
+}
+
+.photography__item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.photography__image-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: min(70dvh, 700px);
+  overflow: hidden;
+  background: #121212;
+}
+
+.photography__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.photography .photography__open {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 50%;
+  background: rgb(5 5 5 / 80%);
+  color: #fff;
+  text-decoration: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+}
+
+.photography__item:hover .photography__open,
+.photography__item:focus-within .photography__open {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.photography .photography__open:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #050505;
+}
+
+.photography__caption {
+  flex: 1;
+  padding: 1.35rem 1.4rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+  overflow-wrap: anywhere;
+}
+
+.photography__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.photography__title {
+  margin: 0 0 0.65rem;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.035em;
+}
+
+.photography__description {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+
+.photography__footer {
+  /* Contador y barra arriba; las flechas ocupan una segunda fila centrada. */
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1.25rem 1.75rem;
+  padding-top: 1.4rem;
+}
+
+.photography__position {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.photography__progress {
+  min-width: 3rem;
+  height: 2px;
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.photography__progress::after {
+  content: "";
+  display: block;
+  width: calc(var(--photography-progress, 0) * 100%);
+  height: 100%;
+  background: var(--color-accent);
+  transition: width 0.3s ease;
+}
+
+.photography__controls {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 0.65rem;
+}
+
+.photography__arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--color-muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.photography__arrow:enabled:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #050505;
+}
+
+.photography__arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.photography__arrow:focus-visible {
+  outline: 3px solid var(--color-accent-text);
+  outline-offset: 4px;
+}
+
+.photography__loaded {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 767.98px) {
+  .content-section.photography {
+    padding: 4rem 0 4.5rem;
+  }
+
+  .photography__header {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .photography__intro {
+    max-width: 40ch;
+    font-size: 0.85rem;
+  }
+
+  .photography__caption {
+    padding: 1.1rem;
+  }
+
+  .photography__footer {
+    gap: 1rem;
+  }
+}
+
+@media (hover: none) {
+  .photography .photography__open {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photography .photography__open,
+  .photography__progress::after {
+    transition: none;
+  }
+}

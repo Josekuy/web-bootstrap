@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently --kill-others --names API,WEB \"npm:api\" \"npm:dev:web\"",
+    "dev:web": "vite --port 5173 --strictPort",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -18,7 +19,8 @@
     "test:api": "node --test server/tests/fotografias.test.js server/tests/integracion.test.js server/tests/proyectos-integracion.test.js server/src/modules/proyectos/validacion.test.js",
     "comprobar:admin": "node scripts/comprobar-admin.cjs",
     "proyectos:importar": "node server/scripts/importar-proyectos.js",
-    "comprobar:proyectos": "node scripts/comprobar-proyectos.cjs"
+    "comprobar:proyectos": "node scripts/comprobar-proyectos.cjs",
+    "comprobar:galeria": "node scripts/comprobar-galeria.cjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",
@@ -35,13 +37,15 @@
     "mysql2": "^3.24.6",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "swiper": "^14.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "concurrently": "^10.0.6",
     "eslint": "^10.9.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",

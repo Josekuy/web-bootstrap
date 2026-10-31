@@ -28,17 +28,17 @@ npm run proyectos:importar
 
 La importación no sobrescribe proyectos con un slug existente. Registra su aplicación para que repetir el comando conserve las ediciones y los borrados del panel, sin reintroducir los ejemplos. No es necesaria para crear tus propios proyectos desde cero.
 
-Arranca los dos servidores, cada uno en una terminal:
-
-```sh
-npm run api
-```
+Con MySQL activo en XAMPP, arranca la API y Vite juntos en una terminal:
 
 ```sh
 npm run dev
 ```
 
+Los mensajes llevan los prefijos `API` y `WEB`; `Ctrl+C` detiene ambos procesos. Si prefieres terminales separadas, usa `npm run api` y `npm run dev:web`. Detén las instancias anteriores antes de cambiar de modalidad para evitar ocupar dos veces los mismos puertos. Vite usa estrictamente el puerto 5173: si está ocupado avisa y termina, sin cambiar a otro origen que el panel no tenga permitido.
+
 Abre `http://127.0.0.1:5173/` para la portada y `http://127.0.0.1:5173/admin` para el panel. Vite envía `/api` a Express en el puerto 3001. Consulta las credenciales iniciales en tu `.env`; no las copies en documentación ni en el código. `.env` y `server/storage/` están excluidos de Git.
+
+Si aparece `ECONNREFUSED 127.0.0.1:3001`, el proxy de Vite no encuentra Express: revisa los mensajes `API`. Un fallo de conexión a `3306` corresponde a MySQL; comprueba que esté iniciado y que la conexión de `.env` sea correcta.
 
 ## Contenido e interfaz
 
@@ -56,6 +56,8 @@ Los textos pendientes usan Lorem ipsum. Los correos y enlaces sin configurar se 
 «Ver proyecto» abre una ficha en un modal de Bootstrap 5, con cierre mediante su X, Escape o clic en el fondo y devolución del foco a la tarjeta. `ProjectDetail.jsx` representa el modal mediante un portal y `ProjectCard.jsx` lo abre con los atributos oficiales de Bootstrap. Los enlaces opcionales solo aparecen cuando existen destinos válidos.
 
 `src/App.jsx` organiza las secciones y carga el panel al visitar `/admin`. `src/styles/custom.css` y `custom_dark.css` definen ambos temas; `admin.css` contiene los estilos del panel. Se mantiene el grid personalizado de tres, dos y una columnas.
+
+Fotografía utiliza Swiper en una galería horizontal, con estilos propios en `src/styles/photography.css`: deslizamiento táctil, flechas, contador y navegación con teclado mientras el foco está dentro. Conserva el encuadre completo de cada imagen y permite ampliarla en otra pestaña. No avanza automáticamente y respeta el movimiento reducido. Con una sola foto no aparecen controles innecesarios; «Cargar más fotografías» mantiene la posición al añadir otra página de la API.
 
 Las funciones propias están en español. Se conservan los nombres de los archivos existentes, las clases CSS y las APIs externas. El tema usa `theme` en localStorage, `dark-mode` y `data-bs-theme` en `html`; respeta la preferencia del sistema cuando no hay elección guardada y se aplica antes de montar React. Las fuentes se cargan desde Google Fonts y las imágenes ilustrativas de proyectos desde Unsplash.
 
@@ -80,9 +82,12 @@ Con **API y Vite** activos en otras terminales:
 npm run comprobar:navegador
 npm run comprobar:admin
 npm run comprobar:proyectos
+npm run comprobar:galeria
 ```
 
 Los comprobadores utilizan Chrome/Chromium instalado y un perfil temporal sin ventana; `CHROME_PATH` permite indicar su ejecutable y `PORTFOLIO_URL` cambiar la URL de Vite. Cubren la portada, el panel de fotografía y la gestión de proyectos. Los recorridos administrativos usan las credenciales locales sin imprimirlas y crean sus propios datos de prueba. La opción `--capturas` guarda capturas opcionales en una carpeta temporal al ejecutar los scripts con `node`.
+
+`comprobar:galeria` intercepta las lecturas de fotografías dentro del navegador y utiliza imágenes geométricas temporales. Comprueba navegación, tamaños de pantalla, temas, movimiento reducido, errores y paginación sin modificar las fotografías de MySQL.
 
 `npm run preview` permite previsualizar el resultado de Vite, pero no inicia Express ni configura su proxy de desarrollo. Para servir interfaz y API juntas se utiliza `npm start` con `NODE_ENV=production`, después de compilar y preparar la configuración HTTPS descrita en la guía del backend.
 

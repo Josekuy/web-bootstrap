@@ -108,6 +108,13 @@ async function pulsarElemento(selector) {
   const coordenadas = await esperarHasta(async () => {
     const posicion = await evaluar(`(() => {
       const elemento = document.querySelector(${JSON.stringify(selector)});
+      const limitesPrevios = elemento.getBoundingClientRect();
+      // El foco devuelto por Bootstrap puede reanudar un scroll suave después
+      // del primer desplazamiento. Recolocamos el control si vuelve a salir.
+      const centroPrevio = limitesPrevios.top + limitesPrevios.height / 2;
+      if (centroPrevio <= 0 || centroPrevio >= innerHeight) {
+        elemento.scrollIntoView({ block: 'center', behavior: 'instant' });
+      }
       const limites = elemento.getBoundingClientRect();
       const x = limites.left + limites.width / 2;
       const y = limites.top + limites.height / 2;

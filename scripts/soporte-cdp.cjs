@@ -42,6 +42,14 @@ async function abrirNavegador() {
   let siguienteId = 0;
   const pendientes = new Map();
   const errores = [];
+  const escuchadores = new Map();
+
+  /** Permite interceptar eventos CDP sin modificar los consumidores que solo envían comandos. */
+  function escucharEvento(metodo, manejador) {
+    if (!escuchadores.has(metodo)) escuchadores.set(metodo, new Set());
+    escuchadores.get(metodo).add(manejador);
+    return () => escuchadores.get(metodo)?.delete(manejador);
+  }
 
   function enviar(metodo, parametros = {}) {
     const id = ++siguienteId;
@@ -145,6 +153,13 @@ async function abrirNavegador() {
         else pendiente.resolver(mensaje.result);
       }
       if (mensaje.method === "Runtime.exceptionThrown") errores.push(mensaje.params.exceptionDetails.text);
+      for (const manejador of escuchadores.get(mensaje.method) || []) {
+        try {
+          Promise.resolve(manejador(mensaje.params)).catch(() => errores.push("No se pudo atender un evento de comprobación CDP."));
+        } catch {
+          errores.push("No se pudo atender un evento de comprobación CDP.");
+        }
+      }
     });
     conexion.addEventListener("close", () => {
       for (const pendiente of pendientes.values()) {
@@ -156,7 +171,7 @@ async function abrirNavegador() {
     await enviar("Page.enable");
     await enviar("Runtime.enable");
     await enviar("Network.enable");
-    return { enviar, evaluar, pulsar, rellenar, adjuntarArchivo, navegar, esperarHasta, cerrar, errores };
+    return { enviar, evaluar, pulsar, rellenar, adjuntarArchivo, navegar, esperarHasta, escucharEvento, cerrar, errores };
   } catch (error) {
     await cerrar();
     throw error;

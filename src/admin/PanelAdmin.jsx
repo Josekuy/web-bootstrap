@@ -302,14 +302,14 @@ function PanelAdmin() {
         ) : (
           <>
             <nav className="nav nav-pills admin__secciones" aria-label="Secciones de administración">
+              <button type="button" className={"nav-link" + (seccion === "proyectos" ? " active" : "")}
+              data-seccion="proyectos" aria-pressed={seccion === "proyectos"}
+              aria-controls="gestion-proyectos" disabled={ocupado}
+              onClick={() => cambiarSeccion("proyectos")}>Proyectos</button>
               <button type="button" className={"nav-link" + (seccion === "fotografias" ? " active" : "")}
                 data-seccion="fotografias" aria-pressed={seccion === "fotografias"}
                 aria-controls="gestion-fotografias" disabled={ocupado}
                 onClick={() => cambiarSeccion("fotografias")}>Fotografía</button>
-              <button type="button" className={"nav-link" + (seccion === "proyectos" ? " active" : "")}
-                data-seccion="proyectos" aria-pressed={seccion === "proyectos"}
-                aria-controls="gestion-proyectos" disabled={ocupado}
-                onClick={() => cambiarSeccion("proyectos")}>Proyectos</button>
             </nav>
             <div className="admin__introduccion">
               <div>

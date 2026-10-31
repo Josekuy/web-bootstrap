@@ -15,7 +15,7 @@ Los nombres propios están en español. Los archivos existentes conservan sus no
 | `src/components/ThemeToggle.jsx` | `SelectorTema` | Aplicar y guardar el tema claro u oscuro. |
 | `src/components/AnimationLab.jsx` | `LaboratorioAnimacion` | Ajustar y animar la fila de cuadrados. |
 | `src/components/SobreMi.jsx` | `SobreMi` | Mostrar la biografía configurada. |
-| `src/components/Fotografia.jsx` | `Fotografia` | Mostrar fotografías de la API, carga, errores, estado vacío y acceso a más resultados. |
+| `src/components/Fotografia.jsx` | `Fotografia` | Mostrar la galería Swiper con fotografías de la API, controles, carga, errores y acceso a más resultados. |
 | `src/components/Contacto.jsx` | `Contacto` | Mostrar los canales de contacto configurados. |
 
 En `Navbar.jsx`, `navegarASeccion`, `completarNavegacion`, `cerrarTrasApertura` y `cerrarMenuConTeclado` coordinan el desplegable y el salto al destino. En el selector de tema, `leerTemaInicial` y `alternarTema` recuperan y cambian la preferencia. `aplicarTemaInicial`, en `index.html`, aplica el mismo criterio antes de dibujar React.
@@ -23,6 +23,10 @@ En `Navbar.jsx`, `navegarASeccion`, `completarNavegacion`, `cerrarTrasApertura` 
 En `AnimationLab.jsx`, `actualizarCantidad` calcula cuántos cuadrados caben. `actualizarMovimiento` y `detenerAnimaciones` atienden el movimiento reducido y la limpieza. `manejarMovimiento`, `actualizarProximidad`, `manejarSalida` y `cancelarFotograma` coordinan la interacción con el ratón.
 
 `DetalleProyecto` inicializa el modal en un efecto y ejecuta `hide()` y `dispose()` al desmontar. `createPortal` coloca la ficha dentro de `body`. El modal no utiliza la clase `fade`, por lo que su limpieza no necesita esperar una transición. Bootstrap gestiona Escape, el fondo y la devolución del foco.
+
+En `Fotografia`, `registrarCarrusel` y `liberarCarrusel` guardan y limpian la referencia de Swiper. `actualizarNavegacion` sincroniza índice y extremos con las flechas y el contador. `mostrarAnterior` y `mostrarSiguiente` ejecutan los métodos oficiales `slidePrev` y `slideNext`. `habilitarTeclado`, `deshabilitarTeclado` y `comprobarFoco` limitan las flechas de teclado al foco de la galería. Añadir otra página conserva la instancia y la posición; no hay reproducción automática. Los módulos `A11y` y `Keyboard`, los componentes `Swiper` y `SwiperSlide` y sus propiedades conservan sus nombres oficiales.
+
+`src/hooks/useMovimientoReducido.js` consulta `prefers-reduced-motion` con `useSyncExternalStore`: `leerPreferencia` obtiene el valor y `suscribirPreferencia` escucha sus cambios. La galería aplica velocidad cero cuando esa preferencia está activa. Sus estilos se encuentran en `src/styles/photography.css` y utilizan las variables de ambos temas.
 
 ## Consultas y panel
 
