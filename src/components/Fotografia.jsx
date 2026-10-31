@@ -1,11 +1,14 @@
-import { fotografias as fotografiasIniciales } from "../data/fotografias";
+import { useFotografias } from "../hooks/useFotografias";
 
-/** Presenta las fotografías publicadas o un mensaje si la colección sigue vacía.
+/** La API es el origen habitual. Una colección explícita permite reutilizar y probar la vista sin red.
  * @param {{fotografias?: import("../data/fotografias").Fotografia[]}} propiedades
  */
-function Fotografia({ fotografias = fotografiasIniciales }) {
+function Fotografia({ fotografias }) {
+  const consulta = useFotografias({ activa: fotografias === undefined });
+  const usaApi = fotografias === undefined;
+  const coleccion = usaApi ? consulta.fotografias : fotografias;
   // filter crea un nuevo array: el orden de los datos originales no se modifica.
-  const fotografiasPublicadas = fotografias
+  const fotografiasPublicadas = coleccion
     .filter((fotografia) => fotografia.estado === "publicado")
     .sort((primera, segunda) => primera.orden - segunda.orden || primera.id - segunda.id);
 
@@ -18,7 +21,7 @@ function Fotografia({ fotografias = fotografiasIniciales }) {
         </h2>
 
         {fotografiasPublicadas.length > 0 ? (
-          <div className="photography__grid">
+          <div className="photography__grid" aria-busy={usaApi && consulta.cargando}>
             {fotografiasPublicadas.map((fotografia) => (
               <figure className="photography__item" key={fotografia.id}>
                 <img
@@ -27,6 +30,8 @@ function Fotografia({ fotografias = fotografiasIniciales }) {
                   alt={fotografia.imagenAlt}
                   loading="lazy"
                   decoding="async"
+                  width={fotografia.ancho || undefined}
+                  height={fotografia.alto || undefined}
                 />
                 <figcaption>
                   <h3>{fotografia.titulo}</h3>
@@ -35,8 +40,24 @@ function Fotografia({ fotografias = fotografiasIniciales }) {
               </figure>
             ))}
           </div>
-        ) : (
+        ) : (!usaApi || (!consulta.cargando && !consulta.error)) && (
           <p className="content-section__text">Todavía no hay fotografías publicadas.</p>
+        )}
+
+        {usaApi && consulta.cargando && <p className="content-section__text mt-4" role="status">Cargando fotografías…</p>}
+        {usaApi && consulta.error && (
+          <div className="mt-4" role="alert">
+            <p className="content-section__text">{consulta.error}</p>
+            <button className="btn btn-outline-secondary" type="button" onClick={consulta.reintentar}>
+              Reintentar
+            </button>
+          </div>
+        )}
+        {usaApi && consulta.hayMas && !consulta.error && (
+          <button className="btn btn-outline-secondary mt-4" type="button"
+            onClick={consulta.cargarMas} disabled={consulta.cargando}>
+            {consulta.cargando ? "Cargando…" : "Cargar más fotografías"}
+          </button>
         )}
       </div>
     </section>

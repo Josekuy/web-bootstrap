@@ -95,18 +95,29 @@ async function pulsarCoordenadas(coordenadas) {
 }
 
 async function pulsarElemento(selector) {
-  const coordenadas = await evaluar(`(() => {
+  // Las tarjetas llegan por API después de cargar el documento. Esperamos también
+  // las fuentes y la restauración del scroll antes de calcular el punto del clic.
+  await evaluar("document.fonts.ready.then(() => true)");
+  await evaluar(`(() => {
     const elemento = document.querySelector(${JSON.stringify(selector)});
     if (!elemento) throw new Error('No existe el elemento que se quiere pulsar');
     elemento.scrollIntoView({ block: 'center', behavior: 'instant' });
-    const limites = elemento.getBoundingClientRect();
-    const x = limites.left + limites.width / 2;
-    const y = limites.top + limites.height / 2;
-    if (!elemento.contains(document.elementFromPoint(x, y))) {
-      throw new Error('El elemento está cubierto y no recibe el clic');
-    }
-    return { x, y };
   })()`);
+  let posicionAnterior = "";
+  let lecturasEstables = 0;
+  const coordenadas = await esperarHasta(async () => {
+    const posicion = await evaluar(`(() => {
+      const elemento = document.querySelector(${JSON.stringify(selector)});
+      const limites = elemento.getBoundingClientRect();
+      const x = limites.left + limites.width / 2;
+      const y = limites.top + limites.height / 2;
+      return { x, y, desplazamiento: scrollY, recibeClic: elemento.contains(document.elementFromPoint(x, y)) };
+    })()`);
+    const clave = JSON.stringify(posicion);
+    lecturasEstables = clave === posicionAnterior ? lecturasEstables + 1 : 0;
+    posicionAnterior = clave;
+    return lecturasEstables >= 2 && posicion.recibeClic ? { x: posicion.x, y: posicion.y } : false;
+  }, "posición estable del control que recibe el clic");
   await pulsarCoordenadas(coordenadas);
 }
 

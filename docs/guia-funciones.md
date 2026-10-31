@@ -1,35 +1,71 @@
-Guía de funciones y componentes
+# Guía de funciones y componentes
 
-Las funciones propias y sus variables se han traducido al español. Los archivos existentes conservan sus nombres para que los enlaces del proyecto y su estructura sigan siendo reconocibles. Las clases BEM también se conservan para mantener los estilos.
+Los nombres propios están en español. Los archivos existentes conservan sus nombres para que la estructura siga siendo reconocible, y las clases BEM mantienen sus estilos. Los identificadores exigidos por React, Bootstrap, Express y otras bibliotecas conservan su sintaxis oficial.
 
-| Archivo | Nombre anterior | Nombre actual | Responsabilidad |
-| --- | --- | --- | --- |
-| `src/App.jsx` | `App` | `Aplicacion` | Ordenar las secciones y definir el contenido principal. |
-| `src/components/Navbar.jsx` | `Navbar` | `BarraNavegacion` | Mostrar la navegación y cerrar el menú móvil al seleccionar una sección. |
-| `src/components/Hero.jsx` | `Hero` | `Presentacion` | Mostrar el título, la introducción y el acceso a proyectos. |
-| `src/components/Projects.jsx` | `Projects` | `Proyectos` | Seleccionar proyectos publicados, ordenarlos y generar tarjetas. |
-| `src/components/ProjectCard.jsx` | `ProjectCard` | `TarjetaProyecto` | Mostrar el resumen y enlazar el botón con el modal correspondiente. |
-| `src/components/ThemeToggle.jsx` | `ThemeToggle` | `SelectorTema` | Aplicar y guardar el tema claro u oscuro. |
-| `src/components/AnimationLab.jsx` | `AnimationLab` | `LaboratorioAnimacion` | Ajustar y animar la fila de cuadrados. |
-| `src/components/ProjectDetail.jsx` | Nuevo | `DetalleProyecto` | Crear el modal de Bootstrap y mostrar la ficha y sus enlaces. |
-| `src/components/SobreMi.jsx` | Nuevo | `SobreMi` | Mostrar la biografía. |
-| `src/components/Fotografia.jsx` | Nuevo | `Fotografia` | Mostrar la galería o su estado vacío. |
-| `src/components/Contacto.jsx` | Nuevo | `Contacto` | Mostrar los canales de contacto configurados. |
+## Portfolio público
 
-Funciones que conviene localizar en el editor:
+| Archivo | Función principal | Responsabilidad |
+| --- | --- | --- |
+| `src/App.jsx` | `Aplicacion` | Ordenar las secciones y cargar el panel de forma diferida al visitar `/admin`. |
+| `src/components/Navbar.jsx` | `BarraNavegacion` | Mostrar la navegación y cerrar el menú móvil antes de saltar a una sección. |
+| `src/components/Hero.jsx` | `Presentacion` | Mostrar el título, la introducción y el acceso a proyectos. |
+| `src/components/Projects.jsx` | `Proyectos` | Consultar proyectos publicados, mostrar estados y generar tarjetas y acceso a más resultados. |
+| `src/components/ProjectCard.jsx` | `TarjetaProyecto` | Mostrar el resumen y abrir la ficha correspondiente. |
+| `src/components/ProjectDetail.jsx` | `DetalleProyecto` | Mostrar la ficha en un modal de Bootstrap, con enlaces reales cuando estén configurados. |
+| `src/components/ThemeToggle.jsx` | `SelectorTema` | Aplicar y guardar el tema claro u oscuro. |
+| `src/components/AnimationLab.jsx` | `LaboratorioAnimacion` | Ajustar y animar la fila de cuadrados. |
+| `src/components/SobreMi.jsx` | `SobreMi` | Mostrar la biografía configurada. |
+| `src/components/Fotografia.jsx` | `Fotografia` | Mostrar fotografías de la API, carga, errores, estado vacío y acceso a más resultados. |
+| `src/components/Contacto.jsx` | `Contacto` | Mostrar los canales de contacto configurados. |
 
-- `navegarASeccion`, `completarNavegacion`, `cerrarTrasApertura` y `cerrarMenuConTeclado`, en `Navbar.jsx`: coordinan el cierre del desplegable y el salto al destino.
-- `leerTemaInicial` y `alternarTema`, en `ThemeToggle.jsx`: recuperan la preferencia y cambian el estado.
-- `TarjetaProyecto`, en `ProjectCard.jsx`: asigna un identificador a cada ficha y utiliza `data-bs-toggle="modal"` y `data-bs-target` para abrirla.
-- `DetalleProyecto`, en `ProjectDetail.jsx`: inicializa el modal de Bootstrap en un efecto y lo cierra y libera al desmontar. La X utiliza `btn-close` y `data-bs-dismiss="modal"`; Bootstrap gestiona Escape, el fondo y el retorno del foco.
-- `actualizarCantidad`, en `AnimationLab.jsx`: calcula cuántos cuadrados caben sin desbordar.
-- `actualizarMovimiento` y `detenerAnimaciones`, en ese mismo archivo: respetan el movimiento reducido y limpian las instancias.
-- `manejarMovimiento`, `actualizarProximidad`, `manejarSalida` y `cancelarFotograma`: coordinan el ratón sin crear animaciones en cada evento.
-- `obtenerEnlaceWeb`, en `src/utils/enlaces.js`: acepta URL absolutas HTTP(S) sin credenciales y devuelve `null` para los valores pendientes o inválidos.
-- `aplicarTemaInicial`, en `index.html`: aplica el tema antes de que se dibuje React. Debe seguir el mismo criterio que `leerTemaInicial`.
+En `Navbar.jsx`, `navegarASeccion`, `completarNavegacion`, `cerrarTrasApertura` y `cerrarMenuConTeclado` coordinan el desplegable y el salto al destino. En el selector de tema, `leerTemaInicial` y `alternarTema` recuperan y cambian la preferencia. `aplicarTemaInicial`, en `index.html`, aplica el mismo criterio antes de dibujar React.
 
-Los nombres de las APIs externas siguen en su idioma original. `useState` guarda estado; `useRef` conserva referencias; `useEffect` sincroniza efectos y devuelve su limpieza. `createTimeline` y `createAnimatable` pertenecen a Anime.js; `Collapse` y `Modal` a Bootstrap. `getOrCreateInstance`, `hide` y `dispose` son métodos oficiales de Bootstrap. Las propiedades JSX como `className`, `onClick` y `aria-label` mantienen también su sintaxis oficial.
+En `AnimationLab.jsx`, `actualizarCantidad` calcula cuántos cuadrados caben. `actualizarMovimiento` y `detenerAnimaciones` atienden el movimiento reducido y la limpieza. `manejarMovimiento`, `actualizarProximidad`, `manejarSalida` y `cancelarFotograma` coordinan la interacción con el ratón.
 
-`createPortal`, de React DOM, coloca la ficha dentro de `body` para que el grid de tarjetas no limite su posición. El modal se mantiene sin la clase `fade`: apertura y cierre terminan de forma síncrona y el efecto puede ejecutar `hide()` antes de `dispose()` sin dejar una transición pendiente. Si se añadieran transiciones de Bootstrap, habría que adaptar esa limpieza para esperar sus eventos.
+`DetalleProyecto` inicializa el modal en un efecto y ejecuta `hide()` y `dispose()` al desmontar. `createPortal` coloca la ficha dentro de `body`. El modal no utiliza la clase `fade`, por lo que su limpieza no necesita esperar una transición. Bootstrap gestiona Escape, el fondo y la devolución del foco.
 
-Para cambiar el contenido, consulta [contrato-datos.md](contrato-datos.md). Los textos provisionales están en `src/data/contenido.js`; los proyectos en `src/data/proyectos.js`; la colección de fotografías en `src/data/fotografias.js`.
+## Consultas y panel
+
+| Archivo | Funciones que localizar | Responsabilidad |
+| --- | --- | --- |
+| `src/hooks/useFotografias.js` | `useFotografias`, `cargarPagina`, `cargarMas`, `reintentar` | Consultar páginas públicas, acumular resultados sin duplicar identificadores y cancelar peticiones al desmontar o cambiar de página. |
+| `src/hooks/useProyectos.js` | `useProyectos`, `cargarPagina`, `cargarMas`, `reintentar` | Aplicar el mismo recorrido a proyectos publicados, sin recurrir a datos locales si la API falla. |
+| `src/services/api.js` | `solicitarApi` | Centralizar cookies, cabecera CSRF, cuerpos JSON o `FormData` y errores comprensibles. |
+| `src/admin/PanelAdmin.jsx` | `PanelAdmin`, `cambiarSeccion` | Coordinar la sesión, la sección de fotografía y el cambio a proyectos. |
+| `src/admin/AccesoAdmin.jsx` | `AccesoAdmin`, `enviarAcceso` | Recoger las credenciales y enviar el acceso. |
+| `src/admin/FormularioFotografia.jsx` | `FormularioFotografia`, `seleccionarArchivo`, `enviarFotografia` | Editar metadatos, comprobar formato y tamaño iniciales y enviar la imagen con sus datos. |
+| `src/admin/ListadoFotografias.jsx` | `ListadoFotografias`, `solicitarEliminacion`, `cancelarEliminacion`, `confirmarEliminacion`, `cambiarPagina` | Mostrar fotografías y acciones, paginar y pedir confirmación antes del borrado. |
+| `src/admin/GestionProyectos.jsx` | `GestionProyectos`, `guardarProyecto`, `editarProyecto`, `eliminarProyecto`, `informarResultadoIncierto` | Coordinar listado y formulario y conservar cambios ante una renovación de token o una confirmación incierta. |
+| `src/admin/FormularioProyecto.jsx` | `FormularioProyecto`, `cambiarFuente`, `seleccionarArchivo`, `enviarProyecto` | Editar datos y tecnologías, conservar portada o elegir archivo o URL HTTPS y enviar multipart. |
+| `src/admin/ListadoProyectos.jsx` | `ListadoProyectos`, `solicitarEliminacion`, `cancelarEliminacion`, `confirmarEliminacion`, `cambiarPagina` | Listado paginado de proyectos con edición y borrado confirmado. |
+
+`useFotografias` y `useProyectos` conservan el prefijo `use` exigido para reconocer un hook. Ambas vistas consultan la API por defecto; las propiedades explícitas `fotografias` y `listaProyectos`, respectivamente, permiten reutilizarlas sin red. `src/data/fotografias.js` conserva un tipo JSDoc y una lista vacía de referencia; `src/data/proyectos.js` contiene solo el tipo, sin datos exportados. Ninguno alimenta normalmente los listados.
+
+En `PanelAdmin`, `renovarSesion` obtiene la identidad y el token CSRF. `acceder` sustituye los datos al recibir la sesión regenerada; `salir` cierra esa sesión. `recuperarAcceso` diferencia un acceso caducado de un token antiguo: si la identidad sigue siendo válida, permite reenviar sin borrar la edición. `comenzarOperacion` y `terminarOperacion` impiden envíos simultáneos. `guardarFotografia`, `editarFotografia`, `eliminarFotografia` y `limpiarFormulario` conectan el formulario con el listado.
+
+`FormularioFotografia` crea una URL temporal para la miniatura y la libera con `URL.revokeObjectURL`. Sus comprobaciones ayudan al usuario; la validación definitiva ocurre en el servidor. Al enviar `FormData`, `solicitarApi` deja que el navegador genere `Content-Type` y su delimitador. La sesión viaja en una cookie; no se guarda un token de sesión en `localStorage`.
+
+`GestionProyectos` conserva el formulario al cambiar de sección y cancela las lecturas de una sección inactiva. `comenzarOperacion` y `terminarOperacion` coordinan el bloqueo durante las escrituras. Si el servidor no puede confirmar un commit, `informarResultadoIncierto` actualiza el listado sin repetir automáticamente la operación. `FormularioProyecto` convierte las tecnologías separadas por comas en un array JSON y solo envía otra portada si se cambia su fuente; también libera las miniaturas temporales.
+
+## Backend
+
+| Archivo | Funciones o clase | Responsabilidad |
+| --- | --- | --- |
+| `server/src/app.js` | `crearAplicacion` | Componer middleware, sesiones y rutas con configuración y pool inyectados. |
+| `server/src/configuracion.js` y `base-datos.js` | `cargarConfiguracion`, `crearPool` | Leer configuración privada y reutilizar conexiones MySQL. |
+| `server/src/modules/auth/rutas.js` | `crearProteccionAcceso`, `buscarUsuario`, `exigirAdmin`, `exigirCsrf`, `crearRutasAcceso` | Comprobar una cuenta activa, proteger mutaciones y gestionar acceso y salida. |
+| `server/src/modules/auth/contrasenas.js` | `crearHashContrasena`, `comprobarContrasena` | Derivar y comparar contraseñas con sal aleatoria y scrypt. |
+| `server/src/modules/auth/almacen-sesiones.js` | `AlmacenSesionesMysql` | Persistir sesiones y caducidades en MySQL. |
+| `server/src/modules/fotografias/rutas.js` y `validacion.js` | `crearRutasFotografias`, `validarMetadatosFotografia`, `validarPaginacion`, `validarIdFotografia` | Recibir peticiones, comprobar los datos y coordinar archivos y consultas. |
+| `server/src/modules/fotografias/repositorio.js` | `listarFotografias`, `crearFotografia`, `editarFotografia`, `borrarFotografia`, `convertirFotografia` | Consultar o modificar datos y construir la respuesta pública sin rutas privadas. |
+| `server/src/modules/proyectos/rutas.js` y `validacion.js` | `crearRutasProyectos`, `validarMetadatosProyecto`, `validarEleccionImagen`, `validarPaginacionProyectos`, `validarIdProyecto` | Proteger y validar datos, tecnologías y elección de portada de los proyectos. |
+| `server/src/modules/proyectos/repositorio.js` | `listarProyectos`, `crearProyecto`, `editarProyecto`, `borrarProyecto`, `convertirProyecto` | CRUD transaccional, slug único y tecnologías ordenadas, cargadas por página. |
+| `server/src/modules/imagenes/imagenes.js` | `procesarYGuardarImagen`, `eliminarImagen`, `crearRutasImagenes` | Verificar contenido real, generar WebP y entregar archivos del recurso permitido según su visibilidad. |
+| `server/scripts/migraciones.js` | `aplicarMigraciones` | Ejecutar las migraciones pendientes y registrar las aplicadas. |
+| `server/scripts/importar-proyectos.js` | Script `proyectos:importar` | Importar la copia antigua una vez, conservando slugs existentes y registrando el marcador de aplicación. |
+
+Las funciones de escritura del repositorio utilizan transacciones. La edición y el borrado bloquean la fila durante el cambio; los archivos anteriores se eliminan después de confirmar la base de datos. La arquitectura, las rutas y los límites operativos se explican en [backend-fotografia.md](backend-fotografia.md).
+
+Los métodos `get`, `set`, `destroy` y `touch` de `AlmacenSesionesMysql` mantienen esos nombres porque los requiere `express-session`. Lo mismo sucede con `useState`, `useRef`, `useEffect`, `lazy` y `Suspense` de React; `Collapse` y `Modal` de Bootstrap; `createTimeline` y `createAnimatable` de Anime.js; y `Router`, `execute`, `commit` o `rollback` en el backend. Las propiedades JSX como `className`, `onClick` y `aria-label` conservan también su sintaxis oficial.
+
+Para cambiar contenido: los textos siguen en `src/data/contenido.js`; proyectos y fotografías se gestionan desde sus secciones de `/admin` y se guardan en MySQL mediante la API. La copia de `server/semillas/proyectos-iniciales.js` solo sirve para importar los datos antiguos, no para alimentar la portada ni actualizar registros existentes. Consulta [contrato-datos.md](contrato-datos.md) para sus campos.

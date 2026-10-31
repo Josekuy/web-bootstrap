@@ -1,0 +1,31 @@
+CREATE TABLE IF NOT EXISTS usuarios_admin (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  usuario VARCHAR(80) NOT NULL UNIQUE,
+  hash_contrasena VARCHAR(255) NOT NULL,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sesiones (
+  id VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL PRIMARY KEY,
+  datos LONGTEXT NOT NULL,
+  expira BIGINT UNSIGNED NOT NULL,
+  INDEX idx_sesiones_expira (expira)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS fotografias (
+  id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(160) NOT NULL,
+  descripcion TEXT NOT NULL,
+  nombre_archivo VARCHAR(80) NOT NULL UNIQUE,
+  imagen_alt VARCHAR(300) NOT NULL,
+  orden INT UNSIGNED NOT NULL DEFAULT 0,
+  estado ENUM('borrador', 'publicado') NOT NULL DEFAULT 'borrador',
+  ancho INT UNSIGNED NOT NULL,
+  alto INT UNSIGNED NOT NULL,
+  tamano INT UNSIGNED NOT NULL,
+  fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_fotografias_publicacion (estado, orden, id),
+  INDEX idx_fotografias_orden (orden, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
