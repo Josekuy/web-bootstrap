@@ -73,16 +73,38 @@ async function abrirNavegador() {
   }
 
   async function pulsar(selector) {
-    const posicion = await evaluar(`(() => {
+    await evaluar("document.fonts.ready.then(() => true)");
+    await evaluar(`(() => {
       const elemento = document.querySelector(${JSON.stringify(selector)});
       if (!elemento || elemento.disabled) throw new Error('Control no disponible');
-      elemento.scrollIntoView({ block: 'center', behavior: 'instant' });
-      const limites = elemento.getBoundingClientRect();
-      const x = limites.left + limites.width / 2;
-      const y = limites.top + limites.height / 2;
-      if (!elemento.contains(document.elementFromPoint(x, y))) throw new Error('Control cubierto');
-      return { x, y };
+      elemento.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
     })()`);
+    let posicionAnterior = "";
+    let lecturasEstables = 0;
+    // El foco de los avisos y las imágenes del listado pueden reanudar el scroll
+    // después de scrollIntoView. El clic se envía cuando el control deja de moverse.
+    const posicion = await esperarHasta(async () => {
+      const lectura = await evaluar(`(() => {
+        const elemento = document.querySelector(${JSON.stringify(selector)});
+        if (!elemento || elemento.disabled) return null;
+        const limitesPrevios = elemento.getBoundingClientRect();
+        const centroX = limitesPrevios.left + limitesPrevios.width / 2;
+        const centroY = limitesPrevios.top + limitesPrevios.height / 2;
+        if (centroX <= 0 || centroX >= innerWidth || centroY <= 0 || centroY >= innerHeight) {
+          elemento.scrollIntoView({ block: 'center', inline: 'center', behavior: 'instant' });
+        }
+        const limites = elemento.getBoundingClientRect();
+        const x = limites.left + limites.width / 2;
+        const y = limites.top + limites.height / 2;
+        return { x, y, desplazamientoX: scrollX, desplazamientoY: scrollY,
+          recibeClic: elemento.contains(document.elementFromPoint(x, y)) };
+      })()`);
+      if (!lectura) return false;
+      const clave = JSON.stringify(lectura);
+      lecturasEstables = clave === posicionAnterior ? lecturasEstables + 1 : 0;
+      posicionAnterior = clave;
+      return lecturasEstables >= 2 && lectura.recibeClic ? { x: lectura.x, y: lectura.y } : false;
+    }, "posición estable del control que recibe el clic");
     await enviar("Input.dispatchMouseEvent", { type: "mouseMoved", ...posicion });
     await enviar("Input.dispatchMouseEvent", { type: "mousePressed", ...posicion, button: "left", clickCount: 1 });
     await enviar("Input.dispatchMouseEvent", { type: "mouseReleased", ...posicion, button: "left", clickCount: 1 });

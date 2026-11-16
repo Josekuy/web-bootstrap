@@ -73,14 +73,19 @@ async function buscarFotografia(cliente, ruta, id) {
   return null;
 }
 
-test("la API real con MySQL protege el acceso y completa el ciclo de publicación de una fotografía", { timeout: 120000 }, async (contexto) => {
+for (const recurso of ["fotografias", "ilustraciones"]) {
+test(`la API real protege el acceso y completa el ciclo de publicación de ${recurso}`, { timeout: 120000 }, async (contexto) => {
   const original = cargarConfiguracion();
   assert.ok(original.basePruebas !== original.baseDatos.database, "la integración exige una base distinta de la del portfolio");
-  const directorio = await mkdtemp(path.join(tmpdir(), "portfolio-api-pruebas-"));
+  const raizTemporal = await mkdtemp(path.join(tmpdir(), "portfolio-api-pruebas-"));
+  const directorio = path.join(raizTemporal, recurso);
   const configuracion = {
     ...original,
     produccion: false,
-    directorioImagenes: directorio,
+    directorioImagenes: path.join(raizTemporal, "fotografias"),
+    directorioImagenesFotografias: path.join(raizTemporal, "fotografias"),
+    directorioImagenesIlustraciones: path.join(raizTemporal, "ilustraciones"),
+    directorioImagenesProyectos: path.join(raizTemporal, "proyectos"),
     baseDatos: { ...original.baseDatos, database: original.basePruebas },
   };
   const pool = crearPool(configuracion.baseDatos);
@@ -104,13 +109,13 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
     }
     almacenSesiones?.cerrar();
     try {
-      await pool.execute("DELETE FROM fotografias WHERE titulo IN (?, ?)", [tituloInicial, tituloEditado]);
+      await pool.execute(`DELETE FROM ${recurso} WHERE titulo IN (?, ?)`, [tituloInicial, tituloEditado]);
       if (idUsuario) await pool.execute("DELETE FROM usuarios_admin WHERE id = ? AND usuario = ?", [idUsuario, usuario]);
       for (const sesion of sesionesPropias) await pool.execute("DELETE FROM sesiones WHERE id = ?", [sesion]);
     } finally {
       await pool.end();
-      if (path.dirname(path.resolve(directorio)) === path.resolve(tmpdir()) && path.basename(directorio).startsWith("portfolio-api-pruebas-")) {
-        await rm(directorio, { recursive: true, force: true });
+      if (path.dirname(path.resolve(raizTemporal)) === path.resolve(tmpdir()) && path.basename(raizTemporal).startsWith("portfolio-api-pruebas-")) {
+        await rm(raizTemporal, { recursive: true, force: true });
       }
     }
   });
@@ -129,7 +134,7 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   const administrador = crearNavegador();
   const anonimo = crearNavegador();
 
-  await comprobarError(await anonimo.solicitar("/api/admin/fotografias"), 401, "ACCESO_REQUERIDO");
+  await comprobarError(await anonimo.solicitar(`/api/admin/${recurso}`), 401, "ACCESO_REQUERIDO");
   const sesionAnonima = await administrador.solicitar("/api/admin/sesion");
   assert.equal(sesionAnonima.status, 200);
   const accesoInicial = (await sesionAnonima.json()).datos;
@@ -162,11 +167,11 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   assert.equal(sesion.usuario.usuario, usuario);
   assert.ok(sesion.csrfToken !== accesoInicial.csrfToken, "el acceso debe rotar el token CSRF");
   assert.ok(administrador.obtenerCookie() !== cookieAnonima, "el acceso debe regenerar la sesión");
-  await comprobarError(await crearNavegador(cookieAnonima).solicitar("/api/admin/fotografias"), 401, "ACCESO_REQUERIDO");
+  await comprobarError(await crearNavegador(cookieAnonima).solicitar(`/api/admin/${recurso}`), 401, "ACCESO_REQUERIDO");
   const cabecerasCambio = { "X-CSRF-Token": sesion.csrfToken };
 
   // El token previo al acceso tampoco puede utilizarse con la nueva sesión.
-  await comprobarError(await administrador.solicitar("/api/admin/fotografias", {
+  await comprobarError(await administrador.solicitar(`/api/admin/${recurso}`, {
     method: "POST", headers: { "X-CSRF-Token": accesoInicial.csrfToken }, body: crearFormulario(null, { titulo: tituloInicial }),
   }), 403, "CSRF_INVALIDO");
 
@@ -178,18 +183,18 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
     [Buffer.from("Este archivo no contiene una imagen"), "image/png", "falsa.png"],
     [Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10"/></svg>'), "image/svg+xml", "vector.svg"],
   ]) {
-    await comprobarError(await administrador.solicitar("/api/admin/fotografias", {
+    await comprobarError(await administrador.solicitar(`/api/admin/${recurso}`, {
       method: "POST", headers: cabecerasCambio, body: crearFormulario(contenido, metadatos, tipo, nombre),
     }), 400, "IMAGEN_NO_VALIDA");
   }
-  await comprobarError(await administrador.solicitar("/api/admin/fotografias", {
+  await comprobarError(await administrador.solicitar(`/api/admin/${recurso}`, {
     method: "POST", headers: cabecerasCambio,
     body: crearFormulario(Buffer.alloc(8 * 1024 * 1024 + 1), metadatos),
   }), 413, "IMAGEN_DEMASIADO_GRANDE");
   assert.deepEqual(await readdir(directorio), [], "las subidas rechazadas no dejan archivos");
 
   const imagenOriginal = await sharp({ create: { width: 96, height: 64, channels: 3, background: "#ff5b35" } }).png().toBuffer();
-  const respuestaCreacion = await administrador.solicitar("/api/admin/fotografias", {
+  const respuestaCreacion = await administrador.solicitar(`/api/admin/${recurso}`, {
     method: "POST", headers: cabecerasCambio, body: crearFormulario(imagenOriginal, metadatos),
   });
   assert.equal(respuestaCreacion.status, 201);
@@ -198,9 +203,9 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   assert.equal(fotografia.estado, "borrador");
   assert.equal(fotografia.ancho, 96);
   assert.equal(fotografia.alto, 64);
-  assert.match(fotografia.imagen, /^\/api\/imagenes\/[a-f0-9-]{36}\.webp$/u);
-  assert.equal((await buscarFotografia(administrador, "/api/admin/fotografias", fotografia.id)).titulo, tituloInicial);
-  assert.equal(await buscarFotografia(anonimo, "/api/fotografias", fotografia.id), null);
+  assert.match(fotografia.imagen, new RegExp("^/api/imagenes/" + recurso + "/[a-f0-9-]{36}\\.webp$", "u"));
+  assert.equal((await buscarFotografia(administrador, `/api/admin/${recurso}`, fotografia.id)).titulo, tituloInicial);
+  assert.equal(await buscarFotografia(anonimo, `/api/${recurso}`, fotografia.id), null);
   await comprobarError(await anonimo.solicitar(fotografia.imagen), 404, "IMAGEN_NO_ENCONTRADA");
   const vistaPrivada = await administrador.solicitar(fotografia.imagen);
   assert.equal(vistaPrivada.status, 200);
@@ -208,13 +213,22 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   assert.equal(vistaPrivada.headers.get("cache-control"), "no-store");
   assert.equal((await sharp(Buffer.from(await vistaPrivada.arrayBuffer())).metadata()).format, "webp");
 
-  const rutaFotografia = `/api/admin/fotografias/${fotografia.id}`;
+  const otroRecurso = recurso === "fotografias" ? "ilustraciones" : "fotografias";
+  await comprobarError(await administrador.solicitar(`/api/imagenes/${otroRecurso}/${path.basename(fotografia.imagen)}`), 404, "IMAGEN_NO_ENCONTRADA");
+
+  const rutaFotografia = `/api/admin/${recurso}/${fotografia.id}`;
   const publicada = await administrador.solicitar(rutaFotografia, {
     method: "PUT", headers: cabecerasCambio, body: crearFormulario(null, { estado: "publicado" }),
   });
   assert.equal(publicada.status, 200);
   assert.equal((await publicada.json()).datos.estado, "publicado");
-  assert.equal((await buscarFotografia(anonimo, "/api/fotografias", fotografia.id)).estado, "publicado");
+  assert.equal((await buscarFotografia(anonimo, `/api/${recurso}`, fotografia.id)).estado, "publicado");
+  const otraColeccion = await anonimo.solicitar(`/api/${otroRecurso}?limite=50`);
+  assert.equal(otraColeccion.status, 200);
+  assert.ok(!(await otraColeccion.json()).datos.some((obra) => obra.titulo === tituloInicial), "publicar no mezcla las colecciones");
+  const aliasAnterior = await anonimo.solicitar(`/api/imagenes/${path.basename(fotografia.imagen)}`);
+  assert.equal(aliasAnterior.status, recurso === "ilustraciones" ? 200 : 404, "las URL antiguas solo pertenecen a Ilustración");
+  await aliasAnterior.arrayBuffer();
   const imagenPublica = await anonimo.solicitar(fotografia.imagen);
   assert.equal(imagenPublica.status, 200);
   await imagenPublica.arrayBuffer();
@@ -254,12 +268,12 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   });
   assert.equal(retirada.status, 200);
   await retirada.json();
-  assert.equal(await buscarFotografia(anonimo, "/api/fotografias", fotografia.id), null);
+  assert.equal(await buscarFotografia(anonimo, `/api/${recurso}`, fotografia.id), null);
   await comprobarError(await anonimo.solicitar(reemplazada.imagen), 404, "IMAGEN_NO_ENCONTRADA");
   const respuestaBorrado = await administrador.solicitar(rutaFotografia, { method: "DELETE", headers: cabecerasCambio });
   assert.equal(respuestaBorrado.status, 200);
   assert.equal((await respuestaBorrado.json()).datos.id, fotografia.id);
-  const [filas] = await pool.execute("SELECT id FROM fotografias WHERE id = ?", [fotografia.id]);
+  const [filas] = await pool.execute(`SELECT id FROM ${recurso} WHERE id = ?`, [fotografia.id]);
   assert.equal(filas.length, 0);
   assert.deepEqual(await readdir(directorio), []);
   await comprobarError(await administrador.solicitar(reemplazada.imagen), 404, "IMAGEN_NO_ENCONTRADA");
@@ -268,6 +282,8 @@ test("la API real con MySQL protege el acceso y completa el ciclo de publicació
   const salida = await administrador.solicitar("/api/admin/logout", { method: "POST", headers: cabecerasCambio });
   assert.equal(salida.status, 200);
   assert.equal((await salida.json()).datos.autenticado, false);
-  await comprobarError(await administrador.solicitar("/api/admin/fotografias"), 401, "ACCESO_REQUERIDO");
-  await comprobarError(await crearNavegador(cookieAutenticada).solicitar("/api/admin/fotografias"), 401, "ACCESO_REQUERIDO");
+  await comprobarError(await administrador.solicitar(`/api/admin/${recurso}`), 401, "ACCESO_REQUERIDO");
+  await comprobarError(await crearNavegador(cookieAutenticada).solicitar(`/api/admin/${recurso}`), 401, "ACCESO_REQUERIDO");
 });
+
+}

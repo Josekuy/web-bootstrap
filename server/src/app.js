@@ -10,11 +10,16 @@ import { ErrorAplicacion } from "./errores.js";
 import { AlmacenSesionesMysql } from "./modules/auth/almacen-sesiones.js";
 import { crearProteccionAcceso, crearRutasAcceso } from "./modules/auth/rutas.js";
 import { crearRutasFotografias } from "./modules/fotografias/rutas.js";
+import { crearRutasIlustraciones } from "./modules/ilustraciones/rutas.js";
 import { crearRutasProyectos } from "./modules/proyectos/rutas.js";
 
 // Inyectar configuración y pool permite probar la API con una base separada.
 export async function crearAplicacion({ configuracion, pool }) {
-  await mkdir(configuracion.directorioImagenes, { recursive: true });
+  const directorioFotografias = configuracion.directorioImagenesFotografias || configuracion.directorioImagenes;
+  const directorioIlustraciones = configuracion.directorioImagenesIlustraciones
+    || path.join(directorioFotografias, "ilustraciones");
+  await mkdir(directorioFotografias, { recursive: true });
+  await mkdir(directorioIlustraciones, { recursive: true });
   await mkdir(configuracion.directorioImagenesProyectos, { recursive: true });
   const app = express();
   app.disable("x-powered-by");
@@ -88,7 +93,13 @@ export async function crearAplicacion({ configuracion, pool }) {
   });
   app.use(crearRutasFotografias({
     pool,
-    directorioImagenes: configuracion.directorioImagenes,
+    directorioImagenes: directorioFotografias,
+    exigirAdmin: proteccion.exigirAdmin,
+    exigirCsrf: proteccion.exigirCsrf,
+  }));
+  app.use(crearRutasIlustraciones({
+    pool,
+    directorioImagenes: directorioIlustraciones,
     exigirAdmin: proteccion.exigirAdmin,
     exigirCsrf: proteccion.exigirCsrf,
   }));

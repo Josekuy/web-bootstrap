@@ -19,6 +19,9 @@ const origen = new URL(process.env.PORTFOLIO_URL || "http://127.0.0.1:5173/").or
 const slug = "prueba-automatica-" + randomUUID();
 const titulo = "Prueba automática de proyecto " + randomUUID();
 const editado = titulo + " editado";
+const resumenInicial = "Resumen breve del diseño de identidad visual.";
+const resumenEditado = "Identidad visual con aplicaciones de marca.";
+const descripcionDetallada = "Descripción editada para explicar el proyecto completo.\n\nEl trabajo comprende el análisis de la marca, la definición de su identidad visual y la preparación de distintas aplicaciones. Se detallan las decisiones de tipografía, color y composición, junto con las adaptaciones realizadas para los diferentes soportes.";
 let navegador;
 let directorio;
 let capturas;
@@ -80,10 +83,15 @@ async function abrirGestion() {
 }
 
 async function esperarFila(nombre) {
+  const contieneFila = `[...document.querySelectorAll('#gestion-proyectos tbody th')].some(elemento => elemento.textContent === ${JSON.stringify(nombre)})`;
   for (let pagina = 0; pagina < 100; pagina += 1) {
     await navegador.esperarHasta(() => navegador.evaluar("document.querySelector('#gestion-proyectos .admin__tabla')?.getAttribute('aria-busy') === 'false'"), "listado de proyectos");
-    if (await navegador.evaluar(`[...document.querySelectorAll('#gestion-proyectos tbody th')].some(elemento => elemento.textContent === ${JSON.stringify(nombre)})`)) return;
-    if (await navegador.evaluar("document.querySelector('#gestion-proyectos .admin__paginacion button:last-child').disabled")) break;
+    if (await navegador.evaluar(contieneFila)) return;
+    if (await navegador.evaluar("document.querySelector('#gestion-proyectos .admin__paginacion button:last-child').disabled")) {
+      // El aviso de guardado puede llegar antes de que React refresque la tabla.
+      await navegador.esperarHasta(() => navegador.evaluar(contieneFila), "actualización del proyecto guardado en el listado");
+      return;
+    }
     const anterior = await navegador.evaluar("document.querySelector('#gestion-proyectos .admin__paginacion span').textContent");
     await pulsar("#gestion-proyectos .admin__paginacion button:last-child");
     await navegador.esperarHasta(() => navegador.evaluar(`document.querySelector('#gestion-proyectos .admin__paginacion span').textContent !== ${JSON.stringify(anterior)}`), "siguiente página");
@@ -123,6 +131,9 @@ async function ejecutar() {
   directorio = await fs.mkdtemp(path.join(os.tmpdir(), "portfolio-proyectos-ui-"));
   const archivo = path.join(directorio, "imagen-sintetica.png");
   await sharp({ create: { width: 240, height: 140, channels: 3, background: "#ff5b35" } }).png().toFile(archivo);
+  const detalles = [path.join(directorio, "diseno-frontal.png"), path.join(directorio, "diseno-posterior.png")];
+  await sharp({ create: { width: 200, height: 320, channels: 3, background: "#246bce" } }).png().toFile(detalles[0]);
+  await sharp({ create: { width: 480, height: 160, channels: 3, background: "#319459" } }).png().toFile(detalles[1]);
   if (process.argv.includes("--capturas")) capturas = await fs.mkdtemp(path.join(os.tmpdir(), "portfolio-proyectos-capturas-"));
   navegador = await abrirNavegador();
   await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -139,25 +150,44 @@ async function ejecutar() {
 
   etapa = "creación del borrador";
   for (const [selector, valor] of Object.entries({
-    "#proyecto-titulo": titulo, "#proyecto-slug": slug, "#proyecto-descripcion": "Proyecto sintético del recorrido automático.",
+    "#proyecto-titulo": titulo, "#proyecto-slug": slug, "#proyecto-resumen": resumenInicial, "#proyecto-descripcion": "Proyecto sintético del recorrido automático.",
     "#proyecto-categoria": "Prueba de interfaz", "#proyecto-tecnologias": "React, Bootstrap", "#proyecto-imagen-alt": "Rectángulo naranja de prueba",
   })) await navegador.rellenar(selector, valor);
   await navegador.adjuntarArchivo("#proyecto-imagen", archivo);
+  const documento = await navegador.enviar("DOM.getDocument");
+  const selectorArchivos = await navegador.enviar("DOM.querySelector", { nodeId: documento.root.nodeId, selector: "#proyecto-detalle-archivos" });
+  await navegador.enviar("DOM.setFileInputFiles", { nodeId: selectorArchivos.nodeId, files: detalles });
+  await navegador.esperarHasta(() => navegador.evaluar("document.querySelectorAll('.project-gallery-admin__item').length === 2"), "selección de dos imágenes de detalle");
+  await navegador.rellenar('.project-gallery-admin__item:nth-child(1) input[id^="detalle-alt-"]', "Diseño frontal vertical");
+  await navegador.rellenar('.project-gallery-admin__item:nth-child(2) input[id^="detalle-alt-"]', "Diseño posterior panorámico");
   proyectoPosible = true;
   await guardar(titulo);
   const creado = (await coleccion("/api/admin/proyectos")).find((elemento) => elemento.slug === slug);
   assert.ok(creado?.estado === "borrador");
+  assert.equal(creado.resumen, resumenInicial);
   assert.equal((await coleccion("/api/proyectos")).some((elemento) => elemento.id === creado.id), false);
   const imagenPrivada = await fetch(origen + creado.imagen);
   assert.equal(imagenPrivada.status, 404);
   await imagenPrivada.arrayBuffer();
-  comprobaciones += 2;
+  assert.equal(creado.imagenesDetalle.length, 2);
+  assert.notEqual(creado.imagen, creado.imagenesDetalle[0].imagen);
+  for (const imagen of creado.imagenesDetalle) {
+    const privada = await fetch(origen + imagen.imagen);
+    assert.equal(privada.status, 404, "los detalles del borrador son privados");
+    await privada.arrayBuffer();
+  }
+  comprobaciones += 4;
 
   etapa = "edición y publicación";
   await pulsar(`#gestion-proyectos button[aria-label=${JSON.stringify("Editar " + titulo)}]`);
   await navegador.esperarHasta(() => navegador.evaluar(`document.querySelector('#proyecto-titulo').value === ${JSON.stringify(titulo)}`), "editor del proyecto");
+  await verificar(`document.querySelector('#proyecto-resumen').value === ${JSON.stringify(resumenInicial)} && document.querySelector('#proyecto-descripcion').value === 'Proyecto sintético del recorrido automático.'`, "el panel recupera resumen y descripción como campos independientes");
+  await verificar("document.querySelectorAll('.project-gallery-admin__item').length === 2 && document.querySelector('.project-gallery-admin__item input[id^=detalle-alt-]').value === 'Diseño frontal vertical'", "el editor recupera las imágenes de detalle y sus descripciones");
+  await pulsar('.project-gallery-admin button[aria-label="Subir imagen 2 en el orden"]');
+  await verificar("document.querySelector('.project-gallery-admin__item input[id^=detalle-alt-]').value === 'Diseño posterior panorámico'", "se puede cambiar el orden de las imágenes de detalle");
+  await verificar("document.activeElement.getAttribute('aria-label') === 'Bajar imagen 1 en el orden'", "reordenar hasta el extremo conserva el foco en un control habilitado");
   for (const [selector, valor] of Object.entries({
-    "#proyecto-titulo": editado, "#proyecto-descripcion": "Descripción editada para comprobar la tarjeta y su modal.",
+    "#proyecto-titulo": editado, "#proyecto-resumen": resumenEditado, "#proyecto-descripcion": descripcionDetallada,
     "#proyecto-tecnologias": "React, JavaScript", "#proyecto-orden": "0", "#proyecto-estado": "publicado",
     "#proyecto-url": "https://example.com/prueba-portfolio", "#proyecto-repositorio": "https://example.com/codigo-portfolio",
   })) await navegador.rellenar(selector, valor);
@@ -165,17 +195,81 @@ async function ejecutar() {
   const publicado = (await coleccion("/api/proyectos")).find((elemento) => elemento.id === creado.id);
   assert.ok(publicado.titulo === editado && publicado.orden === 0);
   assert.deepEqual(publicado.tecnologias, ["React", "JavaScript"]);
+  assert.equal(publicado.resumen, resumenEditado);
+  assert.equal(publicado.descripcion, descripcionDetallada);
+  assert.deepEqual(publicado.imagenesDetalle.map((imagen) => imagen.id), creado.imagenesDetalle.map((imagen) => imagen.id).reverse());
+  assert.equal(publicado.imagen, creado.imagen, "reordenar el detalle conserva la portada");
   comprobaciones += 1;
   await capturar("panel-proyectos");
 
   etapa = "tarjeta y modal públicos";
   await navegar("/", `!!document.querySelector('button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]')`);
+  await verificar(`document.querySelector('button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]').closest('article').querySelector('img').getAttribute('src') === ${JSON.stringify(publicado.imagen)}`, "la tarjeta utiliza únicamente la portada");
+  await verificar(`document.querySelector('button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]').closest('article').querySelector('.project-card__description').textContent === ${JSON.stringify(resumenEditado)}`, "la tarjeta cerrada muestra el resumen y no la descripción extensa");
   await pulsar(`button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]`);
   await navegador.esperarHasta(() => navegador.evaluar("!!document.querySelector('.project-detail.show')"), "modal del proyecto publicado");
   await verificar(`document.querySelector('.project-detail.show .project-detail__title').textContent === ${JSON.stringify(editado)} && document.querySelector('.project-detail.show .project-detail__description').textContent.includes('Descripción editada') && [...document.querySelectorAll('.project-detail.show .project-detail__technologies li')].some(elemento => elemento.textContent === 'JavaScript') && !!document.querySelector('.project-detail.show a[href="https://example.com/prueba-portfolio"]')`, "la tarjeta abre una ficha con los metadatos y enlaces guardados");
+  await verificar(`document.querySelector('.project-detail.show .project-detail__description').textContent === ${JSON.stringify(descripcionDetallada)} && getComputedStyle(document.querySelector('.project-detail.show .project-detail__description')).whiteSpace === 'pre-line'`, "la ficha muestra la descripción completa con sus párrafos");
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(publicado.imagenesDetalle[0].imagen)} && document.querySelector('.project-detail.show .project-detail__image').alt === 'Diseño posterior panorámico' && document.querySelectorAll('.project-detail.show .project-detail__thumbnail').length === 2`, "la ficha muestra el primer detalle y miniaturas independientes de la portada");
+  await pulsar('.project-detail.show button[aria-label="Imagen siguiente"]');
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(publicado.imagenesDetalle[1].imagen)} && getComputedStyle(document.querySelector('.project-detail.show .project-detail__image')).objectFit === 'contain'`, "la navegación muestra el diseño vertical completo sin recortarlo");
+  await navegador.enviar("Input.dispatchKeyEvent", { type: "keyDown", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 });
+  await navegador.enviar("Input.dispatchKeyEvent", { type: "keyUp", key: "ArrowLeft", code: "ArrowLeft", windowsVirtualKeyCode: 37 });
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(publicado.imagenesDetalle[0].imagen)}`, "el teclado permite recorrer la galería dentro de la ficha");
+  await pulsar('.project-detail.show .project-detail__thumbnail:nth-child(2)');
+  await verificar("document.querySelector('.project-detail.show .project-detail__thumbnail:nth-child(2)').getAttribute('aria-pressed') === 'true'", "las miniaturas seleccionan la imagen y comunican su estado");
+  await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: 320, height: 850, deviceScaleFactor: 1, mobile: true });
+  await verificar("document.documentElement.scrollWidth <= innerWidth + 1 && document.querySelector('.project-detail.show .modal-body').scrollWidth <= document.querySelector('.project-detail.show .modal-body').clientWidth + 1", "la galería cabe en una pantalla de 320 px");
+  await navegador.evaluar("document.documentElement.classList.add('dark-mode'); document.documentElement.setAttribute('data-bs-theme', 'dark')");
   await capturar("modal-proyecto");
   await pulsar(".project-detail.show .btn-close");
   await navegador.esperarHasta(() => navegador.evaluar("!document.querySelector('.modal-backdrop') && !document.body.classList.contains('modal-open')"), "cierre del modal");
+  await pulsar(`button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]`);
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(publicado.imagenesDetalle[0].imagen)}`, "al reabrir el detalle se vuelve a la primera imagen");
+  await pulsar(".project-detail.show .btn-close");
+  await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+
+  etapa = "eliminación de imágenes de detalle";
+  await navegar("/admin", "!!document.querySelector('[data-seccion=proyectos]')");
+  await abrirGestion();
+  await esperarFila(editado);
+  await pulsar(`#gestion-proyectos button[aria-label=${JSON.stringify("Editar " + editado)}]`);
+  await navegador.esperarHasta(() => navegador.evaluar("document.querySelectorAll('.project-gallery-admin__item').length === 2"), "galería para quitar una imagen");
+  await navegador.rellenar("#proyecto-resumen", "");
+  await pulsar('.project-gallery-admin button[aria-label="Quitar imagen 1 del detalle"]');
+  await verificar("document.activeElement.getAttribute('aria-label') === 'Quitar imagen 1 del detalle'", "quitar una imagen conserva el foco en la siguiente");
+  await guardar(editado);
+  const unica = (await coleccion("/api/proyectos")).find((elemento) => elemento.id === creado.id);
+  assert.equal(unica.resumen, "");
+  assert.equal(unica.descripcion, descripcionDetallada, "vaciar el resumen conserva la explicación completa");
+  assert.equal(unica.imagenesDetalle.length, 1);
+  const eliminada = await fetch(origen + publicado.imagenesDetalle[0].imagen);
+  assert.equal(eliminada.status, 404);
+  await eliminada.arrayBuffer();
+  await navegar("/", `!!document.querySelector('#detalle-proyecto-${creado.id}')`);
+  await verificar(`(() => {
+    const texto = document.querySelector('button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]').closest('article').querySelector('.project-card__description').textContent;
+    return Array.from(texto).length <= 180 && texto.endsWith('…') && ${JSON.stringify(descripcionDetallada.replace(/\s+/gu, " "))}.startsWith(texto.slice(0, -1));
+  })()`, "sin resumen la tarjeta genera un extracto breve y conserva intacta la descripción");
+  await pulsar(`button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]`);
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(unica.imagenesDetalle[0].imagen)} && !document.querySelector('.project-detail.show .project-detail__gallery-controls')`, "con un detalle se muestra su imagen sin controles innecesarios");
+  await verificar(`document.querySelector('.project-detail.show .project-detail__description').textContent === ${JSON.stringify(descripcionDetallada)}`, "la ficha conserva la descripción completa al utilizar el extracto automático");
+  await pulsar(".project-detail.show .btn-close");
+  await navegar("/admin", "!!document.querySelector('[data-seccion=proyectos]')");
+  await abrirGestion();
+  await esperarFila(editado);
+  await pulsar(`#gestion-proyectos button[aria-label=${JSON.stringify("Editar " + editado)}]`);
+  await navegador.esperarHasta(() => navegador.evaluar("document.querySelectorAll('.project-gallery-admin__item').length === 1"), "galería para quitar el último detalle");
+  await pulsar('.project-gallery-admin button[aria-label="Quitar imagen 1 del detalle"]');
+  await verificar("document.activeElement.id === 'proyecto-detalle-archivos'", "quitar el último detalle devuelve el foco al control para añadir imágenes");
+  await guardar(editado);
+  const sinDetalle = (await coleccion("/api/proyectos")).find((elemento) => elemento.id === creado.id);
+  assert.deepEqual(sinDetalle.imagenesDetalle, []);
+  assert.equal(sinDetalle.imagen, publicado.imagen);
+  await navegar("/", `!!document.querySelector('#detalle-proyecto-${creado.id}')`);
+  await pulsar(`button.project-card__button[aria-label=${JSON.stringify("Ver proyecto: " + editado)}]`);
+  await verificar(`document.querySelector('.project-detail.show .project-detail__image').getAttribute('src') === ${JSON.stringify(publicado.imagen)} && !document.querySelector('.project-detail.show .project-detail__gallery-controls')`, "vaciar la galería recupera la portada como alternativa");
+  await pulsar(".project-detail.show .btn-close");
 
   etapa = "retirada y borrado";
   await navegar("/admin", "!!document.querySelector('[data-seccion=proyectos]')");
@@ -208,7 +302,7 @@ async function ejecutar() {
   await pulsar(".admin__cabecera .btn-outline-light");
   await navegador.esperarHasta(() => navegador.evaluar("!!document.querySelector('#admin-usuario')"), "cierre de sesión");
   assert.deepEqual(navegador.errores, [], "sin excepciones JavaScript");
-  console.log(`Correcto: ${comprobaciones} comprobaciones de proyectos; borrador, edición, publicación, modal, retirada, móvil y borrado conservando los registros anteriores.`);
+  console.log(`Correcto: ${comprobaciones} comprobaciones de proyectos; portada y galería independientes, orden, navegación, eliminación y alternativa, borrador, publicación, móvil y borrado conservando los registros anteriores.`);
   if (capturas) console.log(`Capturas: ${capturas}`);
 }
 

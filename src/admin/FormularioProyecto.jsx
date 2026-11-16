@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { obtenerEnlaceWeb } from "../utils/enlaces";
+import ImagenesDetalleProyecto from "./ImagenesDetalleProyecto";
 
 const formatosPermitidos = ["image/jpeg", "image/png", "image/webp"];
 const tamanoMaximo = 8 * 1024 * 1024;
@@ -8,6 +9,7 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
   const [campos, establecerCampos] = useState(() => ({
     titulo: proyecto?.titulo || "",
     slug: proyecto?.slug || "",
+    resumen: proyecto?.resumen || "",
     descripcion: proyecto?.descripcion || "",
     categoria: proyecto?.categoria || "",
     tecnologias: proyecto?.tecnologias.join(", ") || "",
@@ -20,6 +22,9 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
   }));
   const [fuenteImagen, establecerFuenteImagen] = useState(proyecto ? "actual" : "archivo");
   const [archivo, establecerArchivo] = useState(null);
+  const [imagenesDetalle, establecerImagenesDetalle] = useState(() => (proyecto?.imagenesDetalle || []).map((imagen) => ({
+    ...imagen, clave: `existente-${imagen.id}`, imagenAlt: imagen.imagenAlt || "",
+  })));
   const [errorLocal, establecerErrorLocal] = useState("");
   const referenciaTitulo = useRef(null);
   const referenciaError = useRef(null);
@@ -90,6 +95,15 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
     } else if (fuenteImagen === "url" && !imagenUrlValida) {
       mensaje = "La imagen externa debe tener una URL HTTPS válida y sin credenciales.";
     }
+    if (!mensaje && imagenesDetalle.length > 8) {
+      mensaje = "Puedes añadir como máximo 8 imágenes de detalle por proyecto.";
+    } else if (!mensaje && imagenesDetalle.some((imagen) => {
+      if (imagen.id || imagen.archivo) return false;
+      const enlace = obtenerEnlaceWeb(imagen.imagenExterna.trim());
+      return !enlace?.startsWith("https://") || enlace.length > 2048;
+    })) {
+      mensaje = "Las imágenes de detalle externas deben tener una URL HTTPS válida y sin credenciales.";
+    }
     establecerErrorLocal(mensaje);
     if (mensaje) return;
 
@@ -98,6 +112,7 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
     const metadatos = {
       titulo: campos.titulo,
       slug: campos.slug,
+      resumen: campos.resumen,
       descripcion: campos.descripcion,
       categoria: campos.categoria,
       tecnologias: JSON.stringify(tecnologias),
@@ -110,6 +125,16 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
     Object.entries(metadatos).forEach(([nombre, valor]) => formulario.append(nombre, valor));
     if (fuenteImagen === "archivo") formulario.append("imagen", archivo);
     if (fuenteImagen === "url") formulario.append("imagenExterna", campos.imagenExterna.trim());
+    let indiceArchivo = 0;
+    const detalle = imagenesDetalle.map((imagen) => {
+      if (imagen.id) return { id: imagen.id, imagenAlt: imagen.imagenAlt };
+      if (imagen.archivo) {
+        formulario.append("imagenesDetalleArchivos", imagen.archivo);
+        return { archivo: indiceArchivo++, imagenAlt: imagen.imagenAlt };
+      }
+      return { imagenExterna: imagen.imagenExterna.trim(), imagenAlt: imagen.imagenAlt };
+    });
+    formulario.append("imagenesDetalle", JSON.stringify(detalle));
     await alGuardar(formulario);
   }
 
@@ -134,9 +159,16 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
             <p className="form-text" id="proyecto-slug-ayuda">Identificador único con minúsculas, números y guiones: por ejemplo, rediseno-campus.</p>
           </div>
           <div className="mb-3">
-            <label className="form-label" htmlFor="proyecto-descripcion">Descripción</label>
-            <textarea className="form-control" id="proyecto-descripcion" name="descripcion" rows={4}
-              maxLength={5000} value={campos.descripcion} onChange={cambiarCampo} />
+            <label className="form-label" htmlFor="proyecto-resumen">Resumen para la tarjeta</label>
+            <textarea className="form-control" id="proyecto-resumen" name="resumen" rows={2}
+              maxLength={300} value={campos.resumen} onChange={cambiarCampo} aria-describedby="proyecto-resumen-ayuda" />
+            <p className="form-text" id="proyecto-resumen-ayuda">Texto breve para la tarjeta. Si lo dejas vacío, se mostrará un extracto de la descripción.</p>
+          </div>
+          <div className="mb-3">
+            <label className="form-label" htmlFor="proyecto-descripcion">Descripción detallada</label>
+            <textarea className="form-control" id="proyecto-descripcion" name="descripcion" rows={6}
+              maxLength={5000} value={campos.descripcion} onChange={cambiarCampo} aria-describedby="proyecto-descripcion-ayuda" />
+            <p className="form-text" id="proyecto-descripcion-ayuda">Se muestra completa solo al abrir la ficha. Puedes usar saltos de línea y párrafos; el contenido se guarda como texto plano.</p>
           </div>
           <div className="mb-3">
             <label className="form-label" htmlFor="proyecto-categoria">Categoría *</label>
@@ -150,12 +182,13 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
             <p className="form-text" id="proyecto-tecnologias-ayuda">Separa los nombres con comas, sin repetirlos. Máximo 20, de hasta 60 caracteres cada uno.</p>
           </div>
           <fieldset className="admin__fuente-imagen mb-3">
-            <legend>Imagen del proyecto</legend>
+            <legend>Portada del proyecto</legend>
+            <p className="form-text">Esta imagen se muestra en la tarjeta. Puedes usar un mockup y añadir abajo los diseños para el detalle.</p>
             {proyecto && (
               <div className="form-check">
                 <input className="form-check-input" type="radio" name="fuenteImagen" id="proyecto-fuente-actual"
                   value="actual" checked={fuenteImagen === "actual"} onChange={cambiarFuente} />
-                <label className="form-check-label" htmlFor="proyecto-fuente-actual">Conservar imagen actual</label>
+                <label className="form-check-label" htmlFor="proyecto-fuente-actual">Conservar portada actual</label>
               </div>
             )}
             <div className="form-check">
@@ -171,7 +204,7 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
           </fieldset>
           {fuenteImagen === "archivo" && (
             <div className="mb-3">
-              <label className="form-label" htmlFor="proyecto-imagen">Archivo de imagen *</label>
+              <label className="form-label" htmlFor="proyecto-imagen">Archivo de portada *</label>
               <input className="form-control" id="proyecto-imagen" name="imagen" type="file" required
                 accept="image/jpeg,image/png,image/webp" onChange={seleccionarArchivo} aria-describedby="proyecto-imagen-ayuda" />
               <p className="form-text" id="proyecto-imagen-ayuda">JPEG, PNG o WebP de hasta 8 MB. El servidor comprobará el contenido de la imagen.</p>
@@ -179,7 +212,7 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
           )}
           {fuenteImagen === "url" && (
             <div className="mb-3">
-              <label className="form-label" htmlFor="proyecto-imagen-url">URL de la imagen *</label>
+              <label className="form-label" htmlFor="proyecto-imagen-url">URL de la portada *</label>
               <input className="form-control" id="proyecto-imagen-url" name="imagenExterna" type="url" required
                 maxLength={2048} value={campos.imagenExterna} onChange={cambiarCampo} aria-describedby="proyecto-imagen-url-ayuda" />
               <p className="form-text" id="proyecto-imagen-url-ayuda">Debe usar HTTPS y no incluir credenciales. La imagen dependerá del servidor externo; su URL puede seguir siendo pública aunque el proyecto sea un borrador.</p>
@@ -187,16 +220,17 @@ function FormularioProyecto({ proyecto, activo, ocupado, guardando, alGuardar, a
           )}
           {(archivo || imagenPrevia) && (
             <figure className="admin__vista-previa">
-              <img ref={referenciaMiniatura} src={archivo ? undefined : imagenPrevia} alt="Vista previa de la imagen del proyecto" />
+              <img ref={referenciaMiniatura} src={archivo ? undefined : imagenPrevia} alt="Vista previa de la portada del proyecto" />
               <figcaption>{archivo ? archivo.name : fuenteImagen === "actual" ? "Imagen actual" : "Imagen externa"}</figcaption>
             </figure>
           )}
           <div className="mb-3">
-            <label className="form-label" htmlFor="proyecto-imagen-alt">Texto alternativo de la imagen</label>
+            <label className="form-label" htmlFor="proyecto-imagen-alt">Texto alternativo de la portada</label>
             <input className="form-control" id="proyecto-imagen-alt" name="imagenAlt" value={campos.imagenAlt}
               maxLength={300} onChange={cambiarCampo} aria-describedby="proyecto-imagen-alt-ayuda" />
             <p className="form-text" id="proyecto-imagen-alt-ayuda">Describe su contenido. Déjalo vacío únicamente si la imagen es decorativa.</p>
           </div>
+          <ImagenesDetalleProyecto imagenes={imagenesDetalle} alCambiar={establecerImagenesDetalle} alError={establecerErrorLocal} />
           <div className="row g-3 mb-3">
             <div className="col-sm-5">
               <label className="form-label" htmlFor="proyecto-orden">Orden *</label>

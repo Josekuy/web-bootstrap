@@ -1,20 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 
-function ListadoFotografias({ listado, ocupado, eliminando, alEditar, alEliminar, alCambiarPagina, alReintentar }) {
+function ListadoObras({ galeria, listado, activo, ocupado, eliminando, alEditar, alEliminar, alCambiarPagina, alReintentar }) {
   const [confirmacion, establecerConfirmacion] = useState(null);
   const referenciaCancelar = useRef(null);
   const referenciaActivador = useRef(null);
   const referenciaTitulo = useRef(null);
-  const deshabilitado = ocupado || listado.cargando;
+  const deshabilitado = !activo || ocupado || listado.cargando;
   const paginas = Math.max(1, Math.ceil(listado.meta.total / listado.meta.limite));
+  const idTitulo = `listado-${galeria.recurso}-titulo`;
+  const idConfirmacion = `confirmacion-eliminar-${galeria.identificador}-titulo`;
 
   useEffect(() => {
-    if (confirmacion) referenciaCancelar.current?.focus();
-  }, [confirmacion]);
+    if (activo && confirmacion) referenciaCancelar.current?.focus();
+  }, [activo, confirmacion]);
 
-  function solicitarEliminacion(fotografia, evento) {
+  function solicitarEliminacion(obra, evento) {
     referenciaActivador.current = evento.currentTarget;
-    establecerConfirmacion(fotografia);
+    establecerConfirmacion(obra);
   }
 
   function cancelarEliminacion() {
@@ -36,12 +38,12 @@ function ListadoFotografias({ listado, ocupado, eliminando, alEditar, alEliminar
   }
 
   return (
-    <section className="admin__bloque admin__listado" aria-labelledby="listado-fotografias-titulo">
-      <h2 ref={referenciaTitulo} id="listado-fotografias-titulo" tabIndex={-1}>Fotografías guardadas</h2>
-      <p className="admin__texto">{listado.meta.total} {listado.meta.total === 1 ? "fotografía" : "fotografías"}. Los borradores solo aparecen aquí.</p>
+    <section className="admin__bloque admin__listado" aria-labelledby={idTitulo}>
+      <h2 ref={referenciaTitulo} id={idTitulo} tabIndex={-1}>{galeria.pluralTitulo} guardadas</h2>
+      <p className="admin__texto">{listado.meta.total} {listado.meta.total === 1 ? galeria.singular : galeria.plural}. Los borradores solo aparecen aquí.</p>
       {confirmacion && (
-        <div className="admin__confirmacion" role="group" aria-labelledby="confirmacion-eliminar-titulo">
-          <p id="confirmacion-eliminar-titulo" role="alert">
+        <div className="admin__confirmacion" role="group" aria-labelledby={idConfirmacion}>
+          <p id={idConfirmacion} role="alert">
             ¿Eliminar «{confirmacion.titulo}»? Se borrará también su imagen. Esta acción no se puede deshacer.
           </p>
           <div className="admin__acciones">
@@ -49,7 +51,7 @@ function ListadoFotografias({ listado, ocupado, eliminando, alEditar, alEliminar
               {eliminando ? "Eliminando…" : "Eliminar definitivamente"}
             </button>
             <button ref={referenciaCancelar} type="button" className="btn btn-outline-secondary"
-              disabled={deshabilitado} onClick={cancelarEliminacion}>Conservar fotografía</button>
+              disabled={deshabilitado} onClick={cancelarEliminacion}>Conservar {galeria.singular}</button>
           </div>
         </div>
       )}
@@ -59,33 +61,33 @@ function ListadoFotografias({ listado, ocupado, eliminando, alEditar, alEliminar
           <button type="button" className="btn btn-outline-secondary" disabled={deshabilitado} onClick={alReintentar}>Reintentar listado</button>
         </div>
       )}
-      {listado.cargando && <p role="status">Cargando fotografías…</p>}
-      <div className="admin__tabla" role="region" aria-labelledby="listado-fotografias-titulo"
+      {listado.cargando && <p role="status">Cargando {galeria.plural}…</p>}
+      <div className="admin__tabla" role="region" aria-labelledby={idTitulo}
         aria-busy={listado.cargando} tabIndex={0}>
         {listado.datos.length > 0 ? (
           <table className="table align-middle">
-            <caption className="visually-hidden">Listado de fotografías y acciones de edición</caption>
+            <caption className="visually-hidden">Listado de {galeria.plural} y acciones de edición</caption>
             <thead><tr><th scope="col">Imagen</th><th scope="col">Título</th><th scope="col">Estado</th><th scope="col">Orden</th><th scope="col">Acciones</th></tr></thead>
             <tbody>
-              {listado.datos.map((fotografia) => (
-                <tr key={fotografia.id}>
-                  <td><img className="admin__miniatura" src={fotografia.imagen} alt="" loading="lazy" /></td>
-                  <th scope="row">{fotografia.titulo}</th>
-                  <td>{fotografia.estado === "publicado" ? "Publicado" : "Borrador"}</td>
-                  <td>{fotografia.orden}</td>
+              {listado.datos.map((obra) => (
+                <tr key={obra.id}>
+                  <td><img className="admin__miniatura" src={obra.imagen} alt="" loading="lazy" /></td>
+                  <th scope="row">{obra.titulo}</th>
+                  <td>{obra.estado === "publicado" ? "Publicado" : "Borrador"}</td>
+                  <td>{obra.orden}</td>
                   <td><div className="admin__acciones">
                     <button type="button" className="btn btn-sm btn-outline-secondary" disabled={deshabilitado}
-                      aria-label={"Editar " + fotografia.titulo} onClick={() => { establecerConfirmacion(null); alEditar(fotografia); }}>Editar</button>
+                      aria-label={"Editar " + obra.titulo} onClick={() => { establecerConfirmacion(null); alEditar(obra); }}>Editar</button>
                     <button type="button" className="btn btn-sm btn-outline-danger" disabled={deshabilitado}
-                      aria-label={"Eliminar " + fotografia.titulo} onClick={(evento) => solicitarEliminacion(fotografia, evento)}>Eliminar</button>
+                      aria-label={"Eliminar " + obra.titulo} onClick={(evento) => solicitarEliminacion(obra, evento)}>Eliminar</button>
                   </div></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        ) : !listado.cargando && !listado.error && <p>Todavía no hay fotografías. Añade la primera con el formulario.</p>}
+        ) : !listado.cargando && !listado.error && <p>Todavía no hay {galeria.plural}. Añade la primera con el formulario.</p>}
       </div>
-      <nav className="admin__paginacion" aria-label="Páginas de fotografías">
+      <nav className="admin__paginacion" aria-label={`Páginas de ${galeria.plural}`}>
         <button type="button" className="btn btn-outline-secondary" disabled={deshabilitado || listado.meta.pagina <= 1}
           onClick={() => cambiarPagina(listado.meta.pagina - 1)}>Anterior</button>
         <span aria-live="polite">Página {listado.meta.pagina} de {paginas}</span>
@@ -96,4 +98,4 @@ function ListadoFotografias({ listado, ocupado, eliminando, alEditar, alEliminar
   );
 }
 
-export default ListadoFotografias;
+export default ListadoObras;

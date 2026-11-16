@@ -4,6 +4,7 @@ import Presentacion from "./components/Hero";
 import Proyectos from "./components/Projects";
 import LaboratorioAnimacion from "./components/AnimationLab";
 import SobreMi from "./components/SobreMi";
+import Ilustracion from "./components/Ilustracion";
 import Fotografia from "./components/Fotografia";
 import Contacto from "./components/Contacto";
 
@@ -31,6 +32,7 @@ function Aplicacion() {
         <LaboratorioAnimacion />
         <Proyectos />
         <SobreMi />
+        <Ilustracion />
         <Fotografia />
         <Contacto />
       </main>

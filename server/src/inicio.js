@@ -1,6 +1,7 @@
 import { cargarConfiguracion } from "./configuracion.js";
 import { crearPool } from "./base-datos.js";
 import { crearAplicacion } from "./app.js";
+import { prepararAlmacenamientoGalerias } from "./modules/galerias/almacenamiento.js";
 
 const configuracion = cargarConfiguracion();
 const pool = crearPool(configuracion.baseDatos);
@@ -8,6 +9,7 @@ let servidor;
 let almacenSesiones;
 try {
   await pool.execute("SELECT 1");
+  await prepararAlmacenamientoGalerias({ pool, configuracion });
   const aplicacion = await crearAplicacion({ configuracion, pool });
   almacenSesiones = aplicacion.almacenSesiones;
   servidor = await new Promise((resolver, rechazar) => {

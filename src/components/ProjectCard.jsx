@@ -2,9 +2,19 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye } from "@fortawesome/free-solid-svg-icons";
 import DetalleProyecto from "./ProjectDetail";
 
+function resumirDescripcion(descripcion = "") {
+  const texto = descripcion.replace(/\s+/gu, " ").trim();
+  const caracteres = Array.from(texto);
+  if (caracteres.length <= 180) return texto;
+  const fragmento = caracteres.slice(0, 179).join("");
+  const ultimoEspacio = fragmento.lastIndexOf(" ");
+  return (ultimoEspacio > 0 ? fragmento.slice(0, ultimoEspacio) : fragmento).trimEnd() + "…";
+}
+
 // Presenta el resumen y enlaza el botón con el modal de Bootstrap de este proyecto.
 function TarjetaProyecto({ proyecto, numero }) {
   const identificadorModal = "detalle-proyecto-" + proyecto.id;
+  const resumen = proyecto.resumen?.trim() || resumirDescripcion(proyecto.descripcion);
 
   return (
     <>
@@ -19,7 +29,7 @@ function TarjetaProyecto({ proyecto, numero }) {
             <span>#{String(numero).padStart(2, "0")}</span>
           </div>
           <h3 className="project-card__title">{proyecto.titulo}</h3>
-          <p className="project-card__description">{proyecto.descripcion}</p>
+          <p className="project-card__description">{resumen}</p>
 
           <div className="project-card__technologies" aria-label="Tecnologías utilizadas">
             {proyecto.tecnologias.map((tecnologia) => (

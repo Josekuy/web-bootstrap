@@ -16,11 +16,13 @@
     "db:preparar": "node server/scripts/preparar-base.js",
     "db:pruebas": "node server/scripts/preparar-base.js --pruebas",
     "admin:crear": "node server/scripts/crear-admin.js",
-    "test:api": "node --test server/tests/fotografias.test.js server/tests/integracion.test.js server/tests/proyectos-integracion.test.js server/src/modules/proyectos/validacion.test.js",
+    "test:api": "node --test server/tests/fotografias.test.js server/tests/galerias-almacenamiento.test.js server/tests/integracion.test.js server/tests/proyectos-integracion.test.js server/src/modules/proyectos/validacion.test.js",
     "comprobar:admin": "node scripts/comprobar-admin.cjs",
+    "comprobar:admin:fotografia": "node scripts/comprobar-admin.cjs --fotografias",
     "proyectos:importar": "node server/scripts/importar-proyectos.js",
     "comprobar:proyectos": "node scripts/comprobar-proyectos.cjs",
-    "comprobar:galeria": "node scripts/comprobar-galeria.cjs"
+    "comprobar:galeria": "node scripts/comprobar-galeria.cjs",
+    "comprobar:ilustracion": "node scripts/comprobar-ilustracion.cjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.3.1",

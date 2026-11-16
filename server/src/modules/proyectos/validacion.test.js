@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ErrorAplicacion } from "../../errores.js";
 import { crearRutasImagenes } from "../imagenes/imagenes.js";
-import { convertirProyecto } from "./repositorio.js";
+import { convertirProyecto, crearProyecto } from "./repositorio.js";
 import {
-  validarEleccionImagen, validarIdProyecto, validarMetadatosProyecto, validarPaginacionProyectos,
+  validarArchivosDetalle, validarEleccionImagen, validarIdProyecto, validarMetadatosProyecto, validarPaginacionProyectos,
 } from "./validacion.js";
 
 function datosIniciales(cambios = {}) {
@@ -24,10 +24,116 @@ test("los datos de creación admiten portada externa y tecnologías de un multip
   assert.equal(datos.estado, "borrador");
   assert.equal(datos.orden, 0);
   assert.equal(datos.imagenAlt, "");
+  assert.equal(datos.resumen, "");
   assert.equal(datos.urlProyecto, null);
   assert.equal(datos.urlRepositorio, null);
+  assert.deepEqual(datos.imagenesDetalle, []);
   assert.deepEqual(validarMetadatosProyecto({ tecnologias: ["CSS"] }, { parcial: true }), { tecnologias: ["CSS"] });
   assert.deepEqual(validarMetadatosProyecto({ urlProyecto: " " }, { parcial: true }), { urlProyecto: null });
+});
+
+test("el resumen es opcional, independiente y admite hasta 300 caracteres Unicode", () => {
+  const datos = validarMetadatosProyecto(datosIniciales({ resumen: " Resumen de la tarjeta ", descripcion: "Descripción completa\ncon más información." }));
+  assert.equal(datos.resumen, "Resumen de la tarjeta");
+  assert.equal(datos.descripcion, "Descripción completa\ncon más información.");
+  assert.equal(validarMetadatosProyecto(datosIniciales({ resumen: "😀".repeat(300) })).resumen.length, 600);
+  assert.equal(validarMetadatosProyecto(datosIniciales({ descripcion: "😀".repeat(5000) })).descripcion.length, 10000);
+  assert.deepEqual(validarMetadatosProyecto({ resumen: "" }, { parcial: true }), { resumen: "" });
+  assert.deepEqual(validarMetadatosProyecto({ resumen: "  " }, { parcial: true }), { resumen: "" });
+  assert.deepEqual(validarMetadatosProyecto({ resumen: " Una línea\ncon\t  más texto " }, { parcial: true }), { resumen: "Una línea con más texto" });
+  assert.deepEqual(validarMetadatosProyecto({ descripcion: "Solo descripción" }, { parcial: true }), { descripcion: "Solo descripción" });
+  for (const resumen of ["a".repeat(301), "😀".repeat(301), null, 7, [], ["repetido", "duplicado"], {}, "Resumen\u0000oculto", "Resumen\u007foculto"]) {
+    assert.throws(() => validarMetadatosProyecto(datosIniciales({ resumen })), esErrorDatos);
+  }
+});
+
+test("los saltos CRLF de multipart se guardan como LF y cuentan como un carácter", () => {
+  const datos = validarMetadatosProyecto(datosIniciales({
+    resumen: "Resumen\r\nen una línea",
+    descripcion: "Primer párrafo\r\n\r\nSegundo párrafo",
+  }), { multipart: true });
+  assert.equal(datos.resumen, "Resumen en una línea");
+  assert.equal(datos.descripcion, "Primer párrafo\n\nSegundo párrafo");
+  const limite = validarMetadatosProyecto({
+    resumen: "a".repeat(298) + "\r\nb",
+    descripcion: "a".repeat(4998) + "\r\nb",
+  }, { parcial: true, multipart: true });
+  assert.equal(limite.resumen, "a".repeat(298) + " b");
+  assert.equal(limite.descripcion, "a".repeat(4998) + "\nb");
+  assert.equal([...limite.descripcion].length, 5000);
+});
+
+test("la galería de detalle acepta archivos, URL HTTPS e imágenes existentes solo al editar", () => {
+  const entradas = [{ archivo: 0, imagenAlt: " Pantalla principal " }, { imagenExterna: "https://example.com/detalle.webp" }];
+  const datos = validarMetadatosProyecto(datosIniciales({ imagenesDetalle: JSON.stringify(entradas) }), { multipart: true });
+  assert.deepEqual(datos.imagenesDetalle, [
+    { archivo: 0, imagenAlt: "Pantalla principal" }, { imagenExterna: "https://example.com/detalle.webp", imagenAlt: "" },
+  ]);
+  assert.deepEqual(validarMetadatosProyecto({ imagenesDetalle: [{ id: 4, imagenAlt: "Detalle" }] }, { parcial: true }), {
+    imagenesDetalle: [{ id: 4, imagenAlt: "Detalle" }],
+  });
+  assert.deepEqual(validarMetadatosProyecto({ imagenesDetalle: [] }, { parcial: true }), { imagenesDetalle: [] });
+  assert.deepEqual(validarMetadatosProyecto({ titulo: "Solo texto" }, { parcial: true }), { titulo: "Solo texto" });
+  assert.throws(() => validarMetadatosProyecto(datosIniciales({ imagenesDetalle: [{ id: 4 }] })), esErrorDatos);
+});
+
+test("la galería rechaza más de ocho imágenes, fuentes ambiguas, duplicados y datos inseguros", () => {
+  for (const imagenesDetalle of [
+    Array.from({ length: 9 }, () => ({ imagenExterna: "https://example.com/foto.webp" })),
+    [{ id: 1 }, { id: "1" }], [{ archivo: 0 }, { archivo: 0 }], [{ archivo: 8 }], [{ archivo: -1 }],
+    [{ archivo: 0, imagenExterna: "https://example.com/foto.webp" }], [{ id: 1, archivo: 0 }],
+    [{ imagenExterna: "http://example.com/foto.webp" }], [{ imagenExterna: "https://user:pass@example.com/foto.webp" }],
+    [{ imagenExterna: "javascript:alert(1)" }], [{ imagenExterna: null }],
+    [{ archivo: 0, imagenAlt: "a".repeat(301) }], [{ archivo: 0, imagenAlt: "oculto\u0000" }],
+    [{ archivo: 0, nombre_archivo: "ajeno.webp" }], [null], [[]], [{}], "JSON incorrecto", {},
+  ]) {
+    assert.throws(() => validarMetadatosProyecto({ imagenesDetalle }, { parcial: true }), esErrorDatos);
+  }
+  assert.throws(() => validarMetadatosProyecto({ imagenesDetalle: ["[]", "[]"] }, { parcial: true, multipart: true }), esErrorDatos);
+});
+
+test("cada archivo de detalle debe estar referenciado y los índices pueden cambiar el orden", () => {
+  assert.doesNotThrow(() => validarArchivosDetalle({ imagenesDetalle: [{ archivo: 1 }, { archivo: 0 }] }, [{}, {}]));
+  assert.doesNotThrow(() => validarArchivosDetalle({}));
+  for (const [datos, archivos] of [
+    [{}, [{}]], [{ imagenesDetalle: [] }, [{}]], [{ imagenesDetalle: [{ archivo: 0 }] }, []],
+    [{ imagenesDetalle: [{ archivo: 1 }] }, [{}]],
+  ]) assert.throws(() => validarArchivosDetalle(datos, archivos), esErrorDatos);
+});
+
+test("un commit de resultado incierto conserva las subidas para evitar eliminar imágenes referenciadas", async () => {
+  const operaciones = [];
+  const conexion = {
+    beginTransaction: async () => operaciones.push("inicio"),
+    execute: async (sql) => {
+      if (sql.startsWith("INSERT INTO proyectos")) return [{ insertId: 1 }];
+      if (sql.startsWith("SELECT id, slug")) return [[{ id: 1, orden: 0 }]];
+      return [[]];
+    },
+    commit: async () => { operaciones.push("commit"); throw new Error("Conexión perdida al confirmar"); },
+    rollback: async () => operaciones.push("rollback"),
+    release: () => operaciones.push("liberada"),
+  };
+  await assert.rejects(
+    crearProyecto({ getConnection: async () => conexion }, validarMetadatosProyecto(datosIniciales()), null),
+    (error) => error.codigo === "GUARDADO_NO_CONFIRMADO" && error.conservarArchivo === true,
+  );
+  assert.deepEqual(operaciones, ["inicio", "commit", "rollback", "liberada"]);
+});
+
+test("un rollback sin confirmar también conserva todas las subidas y libera la conexión", async () => {
+  let liberada = false;
+  const conexion = {
+    beginTransaction: async () => {},
+    execute: async () => { throw new Error("Fallo de escritura"); },
+    rollback: async () => { throw new Error("Fallo al restaurar"); },
+    release: () => { liberada = true; },
+  };
+  await assert.rejects(
+    crearProyecto({ getConnection: async () => conexion }, validarMetadatosProyecto(datosIniciales()), null),
+    (error) => error.codigo === "GUARDADO_NO_CONFIRMADO" && error.conservarArchivo === true,
+  );
+  assert.equal(liberada, true);
 });
 
 test("slug, estados, campos privados y límites de texto se validan antes de escribir", () => {
@@ -117,4 +223,6 @@ test("el DTO de portada externa no convierte dimensiones desconocidas en cero ni
   assert.equal(datos.alto, null);
   assert.equal(Object.hasOwn(datos, "nombre_archivo"), false);
   assert.deepEqual(datos.tecnologias, ["React"]);
+  assert.deepEqual(datos.imagenesDetalle, []);
+  assert.equal(datos.resumen, "", "el DTO no genera un extracto cuando el resumen está vacío");
 });

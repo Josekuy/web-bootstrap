@@ -1,19 +1,21 @@
 import { ErrorAplicacion } from "../../errores.js";
 
-const COLUMNAS = "id, slug, titulo, descripcion, categoria, nombre_archivo, imagen_externa, imagen_alt, orden, estado, ancho, alto, tamano, url_proyecto, url_repositorio, fecha_creacion, fecha_actualizacion";
+const COLUMNAS = "id, slug, titulo, resumen, descripcion, categoria, nombre_archivo, imagen_externa, imagen_alt, orden, estado, ancho, alto, tamano, url_proyecto, url_repositorio, fecha_creacion, fecha_actualizacion";
 
 /** La portada conserva el formato de las tarjetas, sin conocer rutas de disco. */
-export function convertirProyecto(fila, tecnologias = []) {
+export function convertirProyecto(fila, tecnologias = [], imagenesDetalle = []) {
   return {
     id: Number(fila.id),
     slug: fila.slug,
     titulo: fila.titulo,
+    resumen: fila.resumen ?? "",
     descripcion: fila.descripcion,
     categoria: fila.categoria,
     tecnologias,
     imagen: fila.nombre_archivo ? `/api/imagenes/proyectos/${fila.nombre_archivo}` : fila.imagen_externa,
     imagenExterna: fila.imagen_externa ?? null,
     imagenAlt: fila.imagen_alt,
+    imagenesDetalle,
     orden: Number(fila.orden),
     estado: fila.estado,
     ancho: fila.ancho === null || fila.ancho === undefined ? null : Number(fila.ancho),
@@ -23,6 +25,29 @@ export function convertirProyecto(fila, tecnologias = []) {
     urlProyecto: fila.url_proyecto ?? null,
     urlRepositorio: fila.url_repositorio ?? null,
   };
+}
+
+function convertirImagenDetalle(fila) {
+  return {
+    id: Number(fila.id),
+    imagen: fila.nombre_archivo ? `/api/imagenes/proyectos/${fila.nombre_archivo}` : fila.imagen_externa,
+    imagenExterna: fila.imagen_externa ?? null,
+    imagenAlt: fila.imagen_alt,
+    ancho: fila.ancho === null || fila.ancho === undefined ? null : Number(fila.ancho),
+    alto: fila.alto === null || fila.alto === undefined ? null : Number(fila.alto),
+  };
+}
+
+async function cargarImagenesDetalle(conexion, identificadores) {
+  const resultado = new Map(identificadores.map((id) => [Number(id), []]));
+  if (!identificadores.length) return resultado;
+  const marcadores = identificadores.map(() => "?").join(", ");
+  const [filas] = await conexion.execute(
+    `SELECT id, proyecto_id, nombre_archivo, imagen_externa, imagen_alt, ancho, alto FROM proyecto_imagenes WHERE proyecto_id IN (${marcadores}) ORDER BY proyecto_id ASC, orden ASC, id ASC`,
+    identificadores,
+  );
+  for (const fila of filas) resultado.get(Number(fila.proyecto_id))?.push(convertirImagenDetalle(fila));
+  return resultado;
 }
 
 async function cargarTecnologias(conexion, identificadores) {
@@ -48,8 +73,9 @@ export async function listarProyectos(pool, { pagina, limite, desplazamiento }, 
     [...parametros, limite, desplazamiento],
   );
   const tecnologias = await cargarTecnologias(pool, filas.map((fila) => fila.id));
+  const imagenesDetalle = await cargarImagenesDetalle(pool, filas.map((fila) => fila.id));
   return {
-    datos: filas.map((fila) => convertirProyecto(fila, tecnologias.get(Number(fila.id)))),
+    datos: filas.map((fila) => convertirProyecto(fila, tecnologias.get(Number(fila.id)), imagenesDetalle.get(Number(fila.id)))),
     meta: { pagina, limite, total: Number(recuento[0].total) },
   };
 }
@@ -103,7 +129,8 @@ async function leerProyecto(conexion, id, { bloquear = false } = {}) {
 async function leerProyectoCompleto(conexion, id) {
   const fila = await leerProyecto(conexion, id);
   const tecnologias = await cargarTecnologias(conexion, [id]);
-  return convertirProyecto(fila, tecnologias.get(Number(id)));
+  const imagenesDetalle = await cargarImagenesDetalle(conexion, [id]);
+  return convertirProyecto(fila, tecnologias.get(Number(id)), imagenesDetalle.get(Number(id)));
 }
 
 async function escribirProyecto(conexion, consulta, valores) {
@@ -143,27 +170,61 @@ async function sustituirTecnologias(conexion, proyectoId, tecnologias) {
   }
 }
 
-export function crearProyecto(pool, datos, imagen) {
+async function sustituirImagenesDetalle(conexion, proyectoId, entradas, archivos) {
+  const [actuales] = await conexion.execute(
+    "SELECT id, nombre_archivo FROM proyecto_imagenes WHERE proyecto_id = ? FOR UPDATE", [proyectoId],
+  );
+  const idsActuales = new Set(actuales.map((fila) => Number(fila.id)));
+  const idsConservados = new Set(entradas.filter((entrada) => Object.hasOwn(entrada, "id")).map((entrada) => entrada.id));
+  if ([...idsConservados].some((id) => !idsActuales.has(id))) {
+    throw new ErrorAplicacion(400, "DATOS_NO_VALIDOS", "Revisa las imágenes de detalle.", {
+      imagenesDetalle: "Una imagen de detalle no pertenece a este proyecto o ya no existe.",
+    });
+  }
+  const retiradas = actuales.filter((fila) => !idsConservados.has(Number(fila.id)));
+  for (const fila of retiradas) {
+    await conexion.execute("DELETE FROM proyecto_imagenes WHERE proyecto_id = ? AND id = ?", [proyectoId, fila.id]);
+  }
+  for (const [orden, entrada] of entradas.entries()) {
+    if (Object.hasOwn(entrada, "id")) {
+      await conexion.execute(
+        "UPDATE proyecto_imagenes SET imagen_alt = ?, orden = ? WHERE proyecto_id = ? AND id = ?",
+        [entrada.imagenAlt, orden, proyectoId, entrada.id],
+      );
+    } else {
+      const imagen = Object.hasOwn(entrada, "archivo") ? archivos[entrada.archivo] : null;
+      await conexion.execute(
+        "INSERT INTO proyecto_imagenes (proyecto_id, nombre_archivo, imagen_externa, imagen_alt, orden, ancho, alto, tamano) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [proyectoId, imagen?.nombreArchivo ?? null, imagen ? null : entrada.imagenExterna, entrada.imagenAlt, orden,
+          imagen?.ancho ?? null, imagen?.alto ?? null, imagen?.tamano ?? null],
+      );
+    }
+  }
+  return retiradas.map((fila) => fila.nombre_archivo).filter(Boolean);
+}
+
+export function crearProyecto(pool, datos, imagen, imagenesDetalle = []) {
   return ejecutarTransaccion(pool, async (conexion) => {
     const [resultado] = await escribirProyecto(
       conexion,
-      "INSERT INTO proyectos (slug, titulo, descripcion, categoria, nombre_archivo, imagen_externa, imagen_alt, orden, estado, ancho, alto, tamano, url_proyecto, url_repositorio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO proyectos (slug, titulo, resumen, descripcion, categoria, nombre_archivo, imagen_externa, imagen_alt, orden, estado, ancho, alto, tamano, url_proyecto, url_repositorio) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       [
-        datos.slug, datos.titulo, datos.descripcion, datos.categoria, imagen?.nombreArchivo ?? null,
+        datos.slug, datos.titulo, datos.resumen ?? "", datos.descripcion, datos.categoria, imagen?.nombreArchivo ?? null,
         imagen ? null : datos.imagenExterna, datos.imagenAlt, datos.orden, datos.estado,
         imagen?.ancho ?? null, imagen?.alto ?? null, imagen?.tamano ?? null, datos.urlProyecto, datos.urlRepositorio,
       ],
     );
     await sustituirTecnologias(conexion, resultado.insertId, datos.tecnologias);
+    await sustituirImagenesDetalle(conexion, resultado.insertId, datos.imagenesDetalle ?? [], imagenesDetalle);
     return leerProyectoCompleto(conexion, resultado.insertId);
   });
 }
 
-export function editarProyecto(pool, id, datos, imagen) {
+export function editarProyecto(pool, id, datos, imagen, imagenesDetalle = []) {
   return ejecutarTransaccion(pool, async (conexion) => {
     const actual = await leerProyecto(conexion, id, { bloquear: true });
     const valores = {
-      slug: actual.slug, titulo: actual.titulo, descripcion: actual.descripcion, categoria: actual.categoria,
+      slug: actual.slug, titulo: actual.titulo, resumen: actual.resumen, descripcion: actual.descripcion, categoria: actual.categoria,
       imagenAlt: actual.imagen_alt, orden: actual.orden, estado: actual.estado,
       urlProyecto: actual.url_proyecto, urlRepositorio: actual.url_repositorio,
       ...datos,
@@ -194,16 +255,20 @@ export function editarProyecto(pool, id, datos, imagen) {
 
     await escribirProyecto(
       conexion,
-      "UPDATE proyectos SET slug = ?, titulo = ?, descripcion = ?, categoria = ?, nombre_archivo = ?, imagen_externa = ?, imagen_alt = ?, orden = ?, estado = ?, ancho = ?, alto = ?, tamano = ?, url_proyecto = ?, url_repositorio = ? WHERE id = ?",
+      "UPDATE proyectos SET slug = ?, titulo = ?, resumen = ?, descripcion = ?, categoria = ?, nombre_archivo = ?, imagen_externa = ?, imagen_alt = ?, orden = ?, estado = ?, ancho = ?, alto = ?, tamano = ?, url_proyecto = ?, url_repositorio = ?, fecha_actualizacion = CURRENT_TIMESTAMP WHERE id = ?",
       [
-        valores.slug, valores.titulo, valores.descripcion, valores.categoria, nombreArchivo, imagenExterna,
+        valores.slug, valores.titulo, valores.resumen, valores.descripcion, valores.categoria, nombreArchivo, imagenExterna,
         valores.imagenAlt, valores.orden, valores.estado, ancho, alto, tamano, valores.urlProyecto, valores.urlRepositorio, id,
       ],
     );
     if (Object.hasOwn(datos, "tecnologias")) await sustituirTecnologias(conexion, id, datos.tecnologias);
+    const archivosDetalleAnteriores = Object.hasOwn(datos, "imagenesDetalle")
+      ? await sustituirImagenesDetalle(conexion, id, datos.imagenesDetalle, imagenesDetalle) : [];
+    const archivoAnterior = actual.nombre_archivo && actual.nombre_archivo !== nombreArchivo ? actual.nombre_archivo : null;
     return {
       proyecto: await leerProyectoCompleto(conexion, id),
-      archivoAnterior: actual.nombre_archivo && actual.nombre_archivo !== nombreArchivo ? actual.nombre_archivo : null,
+      archivoAnterior,
+      archivosAnteriores: [archivoAnterior, ...archivosDetalleAnteriores].filter(Boolean),
     };
   });
 }
@@ -211,7 +276,13 @@ export function editarProyecto(pool, id, datos, imagen) {
 export function borrarProyecto(pool, id) {
   return ejecutarTransaccion(pool, async (conexion) => {
     const actual = await leerProyecto(conexion, id, { bloquear: true });
+    const [imagenesDetalle] = await conexion.execute(
+      "SELECT nombre_archivo FROM proyecto_imagenes WHERE proyecto_id = ? FOR UPDATE", [id],
+    );
     await conexion.execute("DELETE FROM proyectos WHERE id = ?", [id]);
-    return { id, archivoAnterior: actual.nombre_archivo };
+    return {
+      id, archivoAnterior: actual.nombre_archivo,
+      archivosAnteriores: [actual.nombre_archivo, ...imagenesDetalle.map((fila) => fila.nombre_archivo)].filter(Boolean),
+    };
   });
 }

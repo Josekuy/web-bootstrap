@@ -2,8 +2,8 @@ import { ErrorAplicacion } from "../../errores.js";
 
 const ENTERO_UNSIGNED_MAXIMO = 4_294_967_295;
 const CAMPOS_PERMITIDOS = new Set([
-  "slug", "titulo", "descripcion", "categoria", "tecnologias", "imagenExterna",
-  "imagenAlt", "orden", "estado", "urlProyecto", "urlRepositorio",
+  "slug", "titulo", "resumen", "descripcion", "categoria", "tecnologias", "imagenExterna",
+  "imagenAlt", "orden", "estado", "urlProyecto", "urlRepositorio", "imagenesDetalle",
 ]);
 
 function leerEntero(valor, minimo, maximo) {
@@ -77,18 +77,19 @@ export function validarMetadatosProyecto(cuerpo, { parcial = false, multipart = 
       errores[campo] = "Debe ser un texto y no puede repetirse.";
       return;
     }
-    const texto = valor.trim();
-    if ((obligatorio && !texto) || [...texto].length > maximo || contieneControles(texto, campo === "descripcion")) {
+    const texto = valor.trim().replace(/\r\n/gu, "\n");
+    if ((obligatorio && !texto) || [...texto].length > maximo || contieneControles(texto, campo === "descripcion" || campo === "resumen")) {
       errores[campo] = obligatorio
         ? `Debe contener entre 1 y ${maximo} caracteres válidos.`
         : `No puede superar ${maximo} caracteres ni incluir controles no permitidos.`;
       return;
     }
-    datos[campo] = texto;
+    datos[campo] = campo === "resumen" ? texto.replace(/\s+/gu, " ") : texto;
   }
 
   validarTexto("titulo", 160, true);
   validarTexto("slug", 160, true);
+  validarTexto("resumen", 300);
   validarTexto("descripcion", 5_000);
   validarTexto("categoria", 120, true);
   validarTexto("imagenAlt", 300);
@@ -127,6 +128,44 @@ export function validarMetadatosProyecto(cuerpo, { parcial = false, multipart = 
     }
   }
 
+  if (!parcial || Object.hasOwn(cuerpo, "imagenesDetalle")) {
+    try {
+      const valor = Object.hasOwn(cuerpo, "imagenesDetalle") ? cuerpo.imagenesDetalle : [];
+      if (multipart && Object.hasOwn(cuerpo, "imagenesDetalle") && typeof valor !== "string") throw new TypeError();
+      const entradas = typeof valor === "string" ? JSON.parse(valor) : valor;
+      if (!Array.isArray(entradas) || entradas.length > 8) throw new TypeError();
+      const ids = new Set();
+      const archivos = new Set();
+      datos.imagenesDetalle = entradas.map((entrada) => {
+        if (!entrada || typeof entrada !== "object" || Array.isArray(entrada)) throw new TypeError();
+        const fuentes = ["id", "archivo", "imagenExterna"].filter((campo) => Object.hasOwn(entrada, campo));
+        if (fuentes.length !== 1 || Object.keys(entrada).some((campo) => campo !== fuentes[0] && campo !== "imagenAlt")) {
+          throw new TypeError();
+        }
+        const alt = Object.hasOwn(entrada, "imagenAlt") ? entrada.imagenAlt : "";
+        if (typeof alt !== "string" || [...alt.trim()].length > 300 || contieneControles(alt)) throw new TypeError();
+        const imagenAlt = alt.trim();
+        if (fuentes[0] === "id") {
+          const id = leerEntero(entrada.id, 1, ENTERO_UNSIGNED_MAXIMO);
+          if (!parcial || id === null || ids.has(id)) throw new TypeError();
+          ids.add(id);
+          return { id, imagenAlt };
+        }
+        if (fuentes[0] === "archivo") {
+          const archivo = leerEntero(entrada.archivo, 0, 7);
+          if (archivo === null || archivos.has(archivo)) throw new TypeError();
+          archivos.add(archivo);
+          return { archivo, imagenAlt };
+        }
+        const imagenExterna = normalizarUrl(entrada.imagenExterna, true);
+        if (!imagenExterna) throw new TypeError();
+        return { imagenExterna, imagenAlt };
+      });
+    } catch {
+      errores.imagenesDetalle = "Envía hasta 8 imágenes con una sola fuente, texto alternativo de hasta 300 caracteres e identificadores sin repetir.";
+    }
+  }
+
   if (!parcial || Object.hasOwn(cuerpo, "orden")) {
     const orden = leerEntero(Object.hasOwn(cuerpo, "orden") ? cuerpo.orden : "0", 0, ENTERO_UNSIGNED_MAXIMO);
     if (orden === null) errores.orden = "Debe ser un entero entre 0 y 4294967295.";
@@ -151,5 +190,16 @@ export function validarEleccionImagen(datos, archivo, { parcial = false } = {}) 
   }
   if (!parcial && !archivo && !datos.imagenExterna) {
     throw new ErrorAplicacion(400, "IMAGEN_REQUERIDA", "Selecciona una imagen o introduce su URL HTTPS.");
+  }
+}
+
+/** Cada archivo recibido debe estar referenciado una vez por la galería. */
+export function validarArchivosDetalle(datos, archivos = []) {
+  const indices = (datos.imagenesDetalle ?? []).filter((entrada) => Object.hasOwn(entrada, "archivo"))
+    .map((entrada) => entrada.archivo);
+  if (indices.length !== archivos.length || indices.some((indice) => indice >= archivos.length)) {
+    throw new ErrorAplicacion(400, "DATOS_NO_VALIDOS", "Revisa las imágenes de detalle.", {
+      imagenesDetalle: "Cada archivo de detalle debe aparecer exactamente una vez en la galería.",
+    });
   }
 }

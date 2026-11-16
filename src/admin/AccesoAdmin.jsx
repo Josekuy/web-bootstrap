@@ -20,7 +20,7 @@ function AccesoAdmin({ alAcceder, ocupado, error, aviso }) {
     <section className="admin__acceso" aria-labelledby="acceso-titulo">
       <p className="admin__etiqueta">Acceso privado</p>
       <h1 id="acceso-titulo">Administrar el portfolio</h1>
-      <p className="admin__texto">Identifícate para gestionar tus fotografías.</p>
+      <p className="admin__texto">Identifícate para gestionar tus proyectos, ilustraciones y fotografías.</p>
       {aviso && <p className="alert alert-info" role="status">{aviso}</p>}
       {error && <p ref={referenciaError} className="alert alert-danger" role="alert" tabIndex={-1}>{error}</p>}
       <form onSubmit={enviarAcceso}>

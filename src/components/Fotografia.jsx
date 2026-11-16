@@ -1,107 +1,89 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { A11y, Keyboard } from "swiper/modules";
+import { useEffect, useId, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faArrowRight, faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faArrowRight, faArrowUpRightFromSquare, faExpand, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { useFotografias } from "../hooks/useFotografias";
-import { useMovimientoReducido } from "../hooks/useMovimientoReducido";
-import "swiper/css";
-import "swiper/css/a11y";
 import "../styles/photography.css";
 
-const modulosCarrusel = [A11y, Keyboard];
-const opcionesTeclado = { enabled: false, onlyInViewport: false, pageUpDown: false };
-const opcionesAccesibilidad = {
-  containerRoleDescriptionMessage: "carrusel de fotografías",
-  itemRoleDescriptionMessage: "fotografía",
-  slideLabelMessage: "{{index}} de {{slidesLength}}",
-  // El contador propio anuncia la posición sin duplicar regiones vivas.
-  wrapperLiveRegion: false,
-};
+function describirOrientacion(fotografia) {
+  if (fotografia.alto > fotografia.ancho) return "vertical";
+  if (fotografia.alto === fotografia.ancho) return "cuadrada";
+  return "horizontal";
+}
 
-/** La API es el origen habitual. Una colección explícita permite reutilizar y probar la vista sin red.
+/** Un book con imágenes completas: el orden editorial procede del panel.
  * @param {{fotografias?: import("../data/fotografias").Fotografia[]}} propiedades
  */
 function Fotografia({ fotografias }) {
-  const consulta = useFotografias({ activa: fotografias === undefined });
-  const movimientoReducido = useMovimientoReducido();
-  const identificador = useId();
-  const identificadorCarrusel = "galeria-fotografias-" + identificador.replace(/:/gu, "");
-  const identificadorAyuda = identificadorCarrusel + "-ayuda";
-  const referenciaCarrusel = useRef(null);
-  const referenciaGaleria = useRef(null);
-  const [navegacion, establecerNavegacion] = useState({ indice: 0, inicio: true, fin: true, bloqueado: true });
   const usaApi = fotografias === undefined;
+  const consulta = useFotografias({ activa: usaApi });
   const coleccion = usaApi ? consulta.fotografias : fotografias;
-  // filter crea un nuevo array: el orden de los datos originales no se modifica.
-  const fotografiasPublicadas = coleccion
+  const publicadas = coleccion
     .filter((fotografia) => fotografia.estado === "publicado")
     .sort((primera, segunda) => primera.orden - segunda.orden || primera.id - segunda.id);
-  const cantidad = fotografiasPublicadas.length;
-  const posicionActual = Math.min(navegacion.indice + 1, cantidad);
-  const puntosDeCambio = useMemo(() => ({
-    768: { slidesPerView: Math.min(Math.max(cantidad, 1), 1.6), spaceBetween: 24 },
-    1200: { slidesPerView: Math.min(Math.max(cantidad, 1), 2.15), spaceBetween: 28 },
-  }), [cantidad]);
-
-  const actualizarNavegacion = useCallback((instancia) => {
-    if (!instancia || instancia.destroyed) return;
-    const siguiente = {
-      indice: instancia.activeIndex || 0,
-      inicio: Boolean(instancia.isBeginning),
-      fin: Boolean(instancia.isEnd),
-      bloqueado: Boolean(instancia.isLocked),
-    };
-    // Swiper puede emitir varios eventos por cambio: solo renderizamos si hay diferencias.
-    establecerNavegacion((anterior) => (
-      anterior.indice === siguiente.indice && anterior.inicio === siguiente.inicio
-      && anterior.fin === siguiente.fin && anterior.bloqueado === siguiente.bloqueado
-        ? anterior : siguiente
-    ));
-  }, []);
+  const cantidad = publicadas.length;
+  const identificador = "book-fotografia-" + useId().replace(/:/gu, "");
+  const referenciaDialogo = useRef(null);
+  const referenciaApertura = useRef(null);
+  const [idAbierto, establecerIdAbierto] = useState(null);
+  const indiceActual = publicadas.findIndex((fotografia) => fotografia.id === idAbierto);
+  const fotografiaActual = publicadas[indiceActual];
+  const estaAbierto = Boolean(fotografiaActual);
 
   useEffect(() => {
-    // Un botón que se deshabilita puede perder el foco sin emitir blur en algunos navegadores.
-    function comprobarFoco() {
-      const instancia = referenciaCarrusel.current;
-      if (instancia && !instancia.destroyed && !referenciaGaleria.current?.contains(document.activeElement)) {
-        instancia.keyboard.disable();
+    if (!estaAbierto) return;
+    const dialogo = referenciaDialogo.current;
+    const apertura = referenciaApertura.current;
+    const desbordamientoAnterior = document.body.style.overflow;
+    if (!dialogo.open) dialogo.showModal();
+    document.body.style.overflow = "hidden";
+
+    // showModal mantiene el foco y vuelve inerte el documento que queda detrás.
+    // La limpieza también funciona al desmontar la sección o con StrictMode.
+    return () => {
+      if (dialogo.open) dialogo.close();
+      document.body.style.overflow = desbordamientoAnterior;
+      if (apertura?.isConnected) apertura.focus({ preventScroll: true });
+    };
+  }, [estaAbierto]);
+
+  function abrirFotografia(fotografia, evento) {
+    referenciaApertura.current = evento.currentTarget;
+    establecerIdAbierto(fotografia.id);
+  }
+
+  function cerrarFotografia() {
+    establecerIdAbierto(null);
+  }
+
+  function mostrarFotografia(indice) {
+    if (indice >= 0 && indice < cantidad) establecerIdAbierto(publicadas[indice].id);
+  }
+
+  function manejarTeclado(evento) {
+    if (evento.altKey || evento.ctrlKey || evento.metaKey) return;
+    if (evento.key === "Tab") {
+      const controles = [...evento.currentTarget.querySelectorAll("button:not(:disabled), a[href]")];
+      const primero = controles[0];
+      const ultimo = controles[controles.length - 1];
+      if (evento.shiftKey && document.activeElement === primero) {
+        evento.preventDefault();
+        ultimo?.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primero?.focus();
       }
     }
-    document.addEventListener("keydown", comprobarFoco, true);
-    return () => document.removeEventListener("keydown", comprobarFoco, true);
-  }, []);
-
-  function registrarCarrusel(instancia) {
-    referenciaCarrusel.current = instancia;
-    actualizarNavegacion(instancia);
-    if (referenciaGaleria.current?.contains(document.activeElement)) instancia.keyboard.enable();
+    if (evento.key === "ArrowLeft" || evento.key === "ArrowRight") {
+      evento.preventDefault();
+      mostrarFotografia(indiceActual + (evento.key === "ArrowRight" ? 1 : -1));
+    }
   }
 
-  function liberarCarrusel(instancia) {
-    if (referenciaCarrusel.current === instancia) referenciaCarrusel.current = null;
-  }
-
-  // Las flechas del teclado solo pertenecen a la galería mientras el foco esté dentro.
-  function habilitarTeclado() {
-    const instancia = referenciaCarrusel.current;
-    if (instancia && !instancia.destroyed) instancia.keyboard.enable();
-  }
-
-  function deshabilitarTeclado(evento) {
-    if (evento.relatedTarget instanceof Node && evento.currentTarget.contains(evento.relatedTarget)) return;
-    const instancia = referenciaCarrusel.current;
-    if (instancia && !instancia.destroyed) instancia.keyboard.disable();
-  }
-
-  function mostrarAnterior() {
-    const instancia = referenciaCarrusel.current;
-    if (instancia && !instancia.destroyed) instancia.slidePrev();
-  }
-
-  function mostrarSiguiente() {
-    const instancia = referenciaCarrusel.current;
-    if (instancia && !instancia.destroyed) instancia.slideNext();
+  function cerrarDesdeFondo(evento) {
+    if (evento.target !== evento.currentTarget) return;
+    const limites = evento.currentTarget.getBoundingClientRect();
+    if (evento.clientX < limites.left || evento.clientX > limites.right
+      || evento.clientY < limites.top || evento.clientY > limites.bottom) cerrarFotografia();
   }
 
   return (
@@ -110,84 +92,50 @@ function Fotografia({ fotografias }) {
         <div className="photography__header">
           <div className="photography__heading">
             <p className="content-section__eyebrow">Fotografía</p>
-            <h2 className="content-section__title" id="fotografia-titulo">Una mirada personal</h2>
+            <h2 className="content-section__title" id="fotografia-titulo">Una mirada<br />sin prisa.</h2>
           </div>
-          <p className="photography__intro">Una selección de fotografías para recorrer a tu ritmo.</p>
+          <div className="photography__introduction">
+            <p className="photography__intro">Una selección de fotografías. Distintos encuadres, una misma mirada.</p>
+            {cantidad > 0 && <p className="photography__hint">Selecciona una imagen para verla en detalle.</p>}
+          </div>
         </div>
 
         {cantidad > 0 ? (
-          <div ref={referenciaGaleria} className="photography__gallery"
-            onFocusCapture={habilitarTeclado} onBlurCapture={deshabilitarTeclado}>
-            <p className="visually-hidden" id={identificadorAyuda}>
-              Usa las flechas izquierda y derecha para recorrer la galería. También puedes deslizar las fotografías.
-            </p>
-            {/* Sin key por cantidad: añadir otra página conserva la instancia y la posición. */}
-            <Swiper className="photography__slider" id={identificadorCarrusel} tabIndex={0} role="group"
-              aria-labelledby="fotografia-titulo" aria-describedby={identificadorAyuda}
-              aria-busy={usaApi && consulta.cargando}
-              modules={modulosCarrusel} a11y={opcionesAccesibilidad} keyboard={opcionesTeclado}
-              slidesPerView={Math.min(cantidad, 1.08)} spaceBetween={16} breakpoints={puntosDeCambio}
-              speed={movimientoReducido ? 0 : 360} loop={false} watchOverflow grabCursor={cantidad > 1}
-              onSwiper={registrarCarrusel} onBeforeDestroy={liberarCarrusel}
-              onSlideChange={actualizarNavegacion} onUpdate={actualizarNavegacion}
-              onResize={actualizarNavegacion} onBreakpoint={actualizarNavegacion}
-              onLock={actualizarNavegacion} onUnlock={actualizarNavegacion}
-              onReachBeginning={actualizarNavegacion} onReachEnd={actualizarNavegacion} onFromEdge={actualizarNavegacion}>
-              {fotografiasPublicadas.map((fotografia, indice) => (
-                <SwiperSlide className="photography__slide" key={fotografia.id}>
-                  <figure className="photography__item">
-                    <div className="photography__image-frame">
-                      <img className="photography__image" src={fotografia.imagen} alt={fotografia.imagenAlt}
-                        loading="lazy" decoding="async" width={fotografia.ancho || undefined} height={fotografia.alto || undefined} />
-                      <a className="photography__open" href={fotografia.imagen} target="_blank" rel="noopener noreferrer"
-                        aria-label={`Ampliar fotografía: ${fotografia.titulo} (se abre en otra pestaña)`}>
-                        <FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
-                      </a>
-                    </div>
-                    <figcaption className="photography__caption">
-                      <div className="photography__meta"><span>{String(indice + 1).padStart(2, "0")}</span><span>Fotografía</span></div>
+          <ol className="photography__grid" role="list" aria-label="Book de fotografía" aria-busy={usaApi && consulta.cargando}>
+            {publicadas.map((fotografia, indice) => (
+              <li className="photography__entry" key={fotografia.id} data-orientacion={describirOrientacion(fotografia)}>
+                <figure className="photography__item">
+                  <button className="photography__open" type="button" aria-haspopup="dialog"
+                    aria-controls={identificador} aria-label={"Ampliar fotografía: " + fotografia.titulo}
+                    onClick={(evento) => abrirFotografia(fotografia, evento)}>
+                    <img className="photography__image" src={fotografia.imagen} alt={fotografia.imagenAlt}
+                      loading="lazy" decoding="async" width={fotografia.ancho || undefined} height={fotografia.alto || undefined} />
+                    <span className="photography__zoom" aria-hidden="true"><FontAwesomeIcon icon={faExpand} /></span>
+                  </button>
+                  <figcaption className="photography__caption">
+                    <span className="photography__number" aria-hidden="true">{String(indice + 1).padStart(2, "0")}</span>
+                    <div>
                       <h3 className="photography__title">{fotografia.titulo}</h3>
                       {fotografia.descripcion && <p className="photography__description">{fotografia.descripcion}</p>}
-                    </figcaption>
-                  </figure>
-                </SwiperSlide>
-              ))}
-            </Swiper>
-            <div className="photography__footer">
-              <p className="photography__position" aria-live="polite" aria-atomic="true">
-                <span className="visually-hidden">Fotografía </span>{String(posicionActual).padStart(2, "0")}
-                <span aria-hidden="true"> / </span><span className="visually-hidden"> de </span>{String(cantidad).padStart(2, "0")}
-              </p>
-              <div className="photography__progress" aria-hidden="true" style={{ "--photography-progress": posicionActual / cantidad }} />
-              {cantidad > 1 && !navegacion.bloqueado && (
-                <div className="photography__controls">
-                  <button className="photography__arrow me-4" type="button" aria-label="Fotografía anterior"
-                    aria-controls={identificadorCarrusel} onClick={mostrarAnterior} disabled={navegacion.inicio || navegacion.bloqueado}>
-                    <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
-                  </button>
-                  <button className="photography__arrow ms-4" type="button" aria-label="Fotografía siguiente"
-                    aria-controls={identificadorCarrusel} onClick={mostrarSiguiente} disabled={navegacion.fin || navegacion.bloqueado}>
-                    <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+                    </div>
+                  </figcaption>
+                </figure>
+              </li>
+            ))}
+          </ol>
         ) : (!usaApi || (!consulta.cargando && !consulta.error)) && (
-          <p className="content-section__text">Todavía no hay fotografías publicadas.</p>
+          <p className="content-section__text photography__empty">Todavía no hay fotografías publicadas.</p>
         )}
 
         {usaApi && consulta.cargando && <p className="content-section__text mt-4" role="status">Cargando fotografías…</p>}
         {usaApi && consulta.error && (
           <div className="mt-4" role="alert">
             <p className="content-section__text">{consulta.error}</p>
-            <button className="btn btn-outline-secondary" type="button" onClick={consulta.reintentar}>
-              Reintentar
-            </button>
+            <button className="btn btn-outline-secondary" type="button" onClick={consulta.reintentar}>Reintentar</button>
           </div>
         )}
         {usaApi && consulta.hayMas && !consulta.error && (
-          <div className="photography__more d-flex flex-wrap align-items-center gap-3 mt-4">
+          <div className="photography__more">
             <button className="btn btn-outline-secondary" type="button"
               onClick={consulta.cargarMas} disabled={consulta.cargando}>
               {consulta.cargando ? "Cargando…" : "Cargar más fotografías"}
@@ -195,6 +143,55 @@ function Fotografia({ fotografias }) {
             <p className="photography__loaded">{cantidad} de {consulta.total} fotografías cargadas.</p>
           </div>
         )}
+
+        <dialog className="photography__lightbox" id={identificador} ref={referenciaDialogo}
+          aria-labelledby={identificador + "-titulo"}
+          aria-describedby={fotografiaActual?.descripcion ? identificador + "-descripcion" : undefined}
+          onCancel={(evento) => { evento.preventDefault(); cerrarFotografia(); }}
+          onClick={cerrarDesdeFondo} onKeyDown={manejarTeclado}>
+          {fotografiaActual && (
+            <div className="photography__lightbox-panel">
+              <div className="photography__lightbox-header">
+                <div className="photography__lightbox-info">
+                  <h3 className="photography__lightbox-title" id={identificador + "-titulo"}>{fotografiaActual.titulo}</h3>
+                  {fotografiaActual.descripcion && (
+                    <p className="photography__lightbox-description" id={identificador + "-descripcion"}>{fotografiaActual.descripcion}</p>
+                  )}
+                </div>
+                <button className="photography__lightbox-button photography__lightbox-close" type="button"
+                  aria-label="Cerrar fotografía" onClick={cerrarFotografia} autoFocus>
+                  <FontAwesomeIcon icon={faXmark} aria-hidden="true" />
+                </button>
+              </div>
+              <div className="photography__lightbox-image-frame">
+                <img className="photography__lightbox-image" src={fotografiaActual.imagen}
+                  alt={fotografiaActual.imagenAlt} width={fotografiaActual.ancho || undefined} height={fotografiaActual.alto || undefined} />
+              </div>
+              <div className="photography__lightbox-footer">
+                <p className="photography__position" aria-live="polite" aria-atomic="true">
+                  <span className="visually-hidden">Fotografía </span>{String(indiceActual + 1).padStart(2, "0")}
+                  <span aria-hidden="true"> / </span><span className="visually-hidden"> de </span>{String(cantidad).padStart(2, "0")}
+                </p>
+                {cantidad > 1 && (
+                  <div className="photography__lightbox-navigation" role="group" aria-label="Recorrer fotografías">
+                    <button className="photography__lightbox-button" type="button" aria-label="Fotografía anterior"
+                      disabled={indiceActual === 0} onClick={() => mostrarFotografia(indiceActual - 1)}>
+                      <FontAwesomeIcon icon={faArrowLeft} aria-hidden="true" />
+                    </button>
+                    <button className="photography__lightbox-button" type="button" aria-label="Fotografía siguiente"
+                      disabled={indiceActual === cantidad - 1} onClick={() => mostrarFotografia(indiceActual + 1)}>
+                      <FontAwesomeIcon icon={faArrowRight} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+                <a className="photography__original" href={fotografiaActual.imagen} target="_blank" rel="noopener noreferrer"
+                  aria-label={"Ver imagen original: " + fotografiaActual.titulo + " (se abre en otra pestaña)"}>
+                  <span>Original</span><FontAwesomeIcon icon={faArrowUpRightFromSquare} aria-hidden="true" />
+                </a>
+              </div>
+            </div>
+          )}
+        </dialog>
       </div>
     </section>
   );

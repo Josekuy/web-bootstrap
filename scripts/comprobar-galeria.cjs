@@ -1,20 +1,23 @@
 /*
- * Comprueba Swiper con fotografías sintéticas interceptadas únicamente en Chrome.
- * No escribe en la API ni en la base de datos. Requiere la web iniciada.
- * Ejecutar: node scripts/comprobar-galeria.cjs [--capturas]
- * Opcionales: PORTFOLIO_URL y CHROME_PATH.
+ * Comprueba el book de Fotografía con imágenes sintéticas interceptadas solo en Chrome.
+ * No escribe en la API ni en MySQL. Requiere Vite ya iniciado.
+ * node scripts/comprobar-galeria.cjs [--capturas]
+ * PORTFOLIO_URL y CHROME_PATH permiten ajustar el entorno.
  */
+/* global document, window, getComputedStyle, innerWidth, innerHeight, scrollX, scrollY, requestAnimationFrame */
 "use strict";
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const os = require("node:os");
 const sharp = require("sharp");
 const { abrirNavegador } = require("./soporte-cdp.cjs");
 
-const origen = new URL(process.env.PORTFOLIO_URL || "http://localhost:5173/").origin;
-const selectorSlider = "#fotografia .photography__slider";
+const origen = new URL(process.env.PORTFOLIO_URL || "http://127.0.0.1:5173/").origin;
+const selectorEntrada = "#fotografia .photography__entry";
+const selectorAbrir = "#fotografia .photography__open";
+const selectorDialogo = "#fotografia dialog.photography__lightbox";
+const selectorCerrar = '#fotografia button[aria-label="Cerrar fotografía"]';
 const selectorSiguiente = '#fotografia button[aria-label="Fotografía siguiente"]';
 const selectorAnterior = '#fotografia button[aria-label="Fotografía anterior"]';
 const erroresIntercepcion = [];
@@ -26,32 +29,53 @@ let capturas;
 let comprobaciones = 0;
 let etapa = "preparación";
 
-/** Son ilustraciones de prueba: alternamos proporciones para detectar recortes. */
+/** Serializa funciones de comprobación; sus argumentos son los únicos datos que entran en la página. */
+async function evaluar(funcion, ...argumentos) {
+  return navegador.evaluar("(" + funcion.toString() + ")(" + argumentos.map((argumento) => JSON.stringify(argumento)).join(",") + ")");
+}
+
+async function esperarCondicion(funcion, descripcion, ...argumentos) {
+  await navegador.esperarHasta(() => evaluar(funcion, ...argumentos), descripcion);
+}
+
+async function verificar(funcion, descripcion, ...argumentos) {
+  assert.equal(await evaluar(funcion, ...argumentos), true, descripcion);
+  comprobaciones += 1;
+}
+
+/** Las proporciones alternan horizontal, vertical y cuadrada. Los marcos permiten ver los bordes. */
 async function crearFotografias() {
-  const colores = [["#eadbc6", "#ef6b43", "#304b63"], ["#cadcdd", "#f3b850", "#466958"], ["#e6d4df", "#ba5a70", "#354369"]];
+  const colores = [["#eadbc6", "#ef6b43", "#304b63"], ["#cadcdd", "#e9b44c", "#466958"], ["#e6d4df", "#ba5a70", "#354369"]];
+  const formatos = [[1080, 680], [620, 880], [760, 760], [1080, 680], [760, 760], [620, 880]];
   return Promise.all(Array.from({ length: 14 }, async (_, indice) => {
-    const vertical = indice % 3 === 1;
-    const ancho = vertical ? 620 : 1080;
-    const alto = vertical ? 880 : 680;
-    const [fondo, acento, montaña] = colores[indice % colores.length];
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${alto}" viewBox="0 0 1080 880"><rect width="1080" height="880" fill="${fondo}"/><circle cx="800" cy="235" r="125" fill="${acento}"/><path d="M0 650L285 290L650 760L1080 420V880H0Z" fill="${montaña}"/><path d="M0 800L500 530L1080 810V880H0Z" fill="${acento}"/><text x="48" y="80" font-family="sans-serif" font-size="32" fill="${montaña}">PRUEBA DE GALERÍA ${String(indice + 1).padStart(2, "0")}</text></svg>`;
+    const [ancho, alto] = formatos[indice % formatos.length];
+    const [fondo, acento, tinta] = colores[indice % colores.length];
+    const numero = String(indice + 1).padStart(2, "0");
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + ancho + '" height="' + alto + '" viewBox="0 0 ' + ancho + " " + alto + '">'
+      + '<rect width="' + ancho + '" height="' + alto + '" fill="' + fondo + '"/>'
+      + '<circle cx="' + ancho * 0.73 + '" cy="' + alto * 0.29 + '" r="' + ancho * 0.15 + '" fill="' + acento + '"/>'
+      + '<path d="M0 ' + alto * 0.78 + "L" + ancho * 0.31 + " " + alto * 0.33 + "L" + ancho * 0.71 + " " + alto * 0.87 + "L" + ancho + " " + alto * 0.53 + "V" + alto + 'H0Z" fill="' + tinta + '"/>'
+      + '<path d="M0 ' + alto * 0.91 + "L" + ancho * 0.5 + " " + alto * 0.66 + "L" + ancho + " " + alto * 0.93 + "V" + alto + 'H0Z" fill="' + acento + '"/>'
+      + '<rect x="5" y="5" width="' + (ancho - 10) + '" height="' + (alto - 10) + '" fill="none" stroke="' + tinta + '" stroke-width="10"/>'
+      + '<text x="36" y="64" font-family="sans-serif" font-size="27" fill="' + tinta + '">BOOK / PRUEBA ' + numero + "</text></svg>";
     const imagen = await sharp(Buffer.from(svg)).png().toBuffer();
     return {
-      id: 900001 + indice, titulo: `Prueba ${String(indice + 1).padStart(2, "0")} · Horizonte`,
-      descripcion: indice === 3 ? "" : "Ilustración sintética para comprobar proporciones, navegación y pies de fotografía.",
+      id: 900001 + indice,
+      titulo: "Encuadre " + numero,
+      descripcion: indice === 3 ? "" : "Imagen sintética de comprobación: formato, composición y lectura del book.",
       imagen: "data:image/png;base64," + imagen.toString("base64"),
-      imagenAlt: `Ilustración de prueba ${indice + 1}: montañas geométricas y un círculo sobre fondo de color`,
+      imagenAlt: "Prueba " + numero + ": formas geométricas y un círculo sobre fondo de color",
       orden: indice, estado: "publicado", ancho, alto,
     };
   }));
 }
 
-/** Sustituye solo GET /api/fotografias; el resto de la web sigue usando sus recursos reales. */
 async function atenderPeticion(peticion) {
   const url = new URL(peticion.request.url);
   const pagina = Number(url.searchParams.get("pagina") || 1);
   const limite = Number(url.searchParams.get("limite") || 12);
   const falla = escenario.fallarPagina === pagina;
+  if (peticion.request.method !== "GET") erroresIntercepcion.push("La galería intentó una operación distinta de GET.");
   const respuesta = falla
     ? { error: { codigo: "PRUEBA_ERROR_TEMPORAL", mensaje: "Error temporal simulado por la comprobación." } }
     : { datos: fotografias.slice((pagina - 1) * limite, Math.min(pagina * limite, escenario.cantidad)), meta: { pagina, limite, total: escenario.cantidad } };
@@ -62,58 +86,51 @@ async function atenderPeticion(peticion) {
       body: Buffer.from(JSON.stringify(respuesta)).toString("base64"),
     });
   } catch (error) {
-    // StrictMode y las recargas pueden cancelar una petición ya interceptada.
+    // StrictMode y las recargas pueden cancelar una solicitud que ya estaba interceptada.
     if (!/Invalid InterceptionId|Invalid RequestId|No resource|cerró la conexión/iu.test(error.message)) erroresIntercepcion.push(error.message);
   }
 }
 
-async function verificar(expresion, descripcion) {
-  assert.equal(await navegador.evaluar(expresion), true, descripcion);
-  comprobaciones += 1;
+async function esperarCantidad(cantidad) {
+  await esperarCondicion((selector, esperada) => document.querySelectorAll(selector).length === esperada,
+    "book con " + cantidad + " fotografías", selectorEntrada, cantidad);
 }
 
 async function cargarEscenario(nombre, cantidad, fallarPagina = null) {
   etapa = nombre;
   escenario = { cantidad, fallarPagina };
-  await navegador.evaluar("window.__documentoAnterior = true");
-  await navegador.enviar("Page.navigate", { url: origen + "/?prueba-galeria=" + encodeURIComponent(nombre) });
-  await navegador.esperarHasta(() => navegador.evaluar("!window.__documentoAnterior && !!document.querySelector('#fotografia')"), "montaje de Fotografía");
+  await evaluar(() => { window.__documentoAnteriorBook = true; });
+  await navegador.enviar("Page.navigate", { url: origen + "/?prueba-book=" + encodeURIComponent(nombre) });
+  await esperarCondicion(() => !window.__documentoAnteriorBook && !!document.querySelector("#fotografia"),
+    "montaje de Fotografía");
   if (fallarPagina === 1) {
-    await navegador.esperarHasta(() => navegador.evaluar("!!document.querySelector('#fotografia [role=alert]')"), "error inicial de la API");
+    await esperarCondicion(() => !!document.querySelector("#fotografia [role=alert]"), "error inicial de la API");
   } else if (cantidad === 0) {
-    await navegador.esperarHasta(() => navegador.evaluar("document.querySelector('#fotografia').textContent.includes('Todavía no hay fotografías publicadas')"), "estado vacío de la galería");
-  } else await esperarCantidad(Math.min(cantidad, 12));
+    await esperarCondicion(() => document.querySelector("#fotografia").textContent.includes("Todavía no hay fotografías publicadas."),
+      "estado vacío de Fotografía");
+  } else {
+    await esperarCantidad(Math.min(cantidad, 12));
+  }
 }
 
-async function esperarCantidad(cantidad) {
-  await navegador.esperarHasta(() => navegador.evaluar(`(() => { const swiper = document.querySelector(${JSON.stringify(selectorSlider)})?.swiper; return swiper && !swiper.destroyed && swiper.slides.length === ${cantidad} && !swiper.animating; })()`), `galería con ${cantidad} fotografías`);
+async function adaptarPantalla(ancho, alto = 1000) {
+  await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: ancho, height: alto, deviceScaleFactor: 1, mobile: ancho < 500 });
+  await esperarCondicion((esperado) => innerWidth === esperado, "viewport de " + ancho + "px", ancho);
+  await evaluar(() => new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver))));
 }
 
-/** El viewport cambia antes que ResizeObserver: esperamos la medida actual de Swiper. */
-async function adaptarPantalla(ancho) {
-  await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: ancho, height: 1000, deviceScaleFactor: 1, mobile: ancho < 500 });
-  await navegador.esperarHasta(() => navegador.evaluar(`(() => {
-    const elemento = document.querySelector(${JSON.stringify(selectorSlider)});
-    const swiper = elemento.swiper;
-    const visibles = swiper.params.slidesPerView;
-    const anchoEsperado = (swiper.width - (visibles - 1) * swiper.params.spaceBetween) / visibles;
-    return innerWidth === ${ancho} && swiper.width > 0 && !swiper.animating
-      && Math.abs(swiper.width - elemento.clientWidth) < 1
-      && Math.abs(swiper.slides[0].getBoundingClientRect().width - anchoEsperado) < 1;
-  })()`), `adaptación de la galería a ${ancho}px`);
-}
-
-async function indiceActual() {
-  return navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex`);
-}
-
-/** El clic se calcula después de estabilizar fuentes y posición del control. */
+/** Fuentes y desplazamiento estables antes de enviar un clic real de puntero. */
 async function pulsar(selector) {
-  await navegador.evaluar("document.fonts.ready.then(() => true)");
-  await navegador.evaluar(`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({ block: 'center', behavior: 'instant' })`);
+  await evaluar(async (control) => {
+    await document.fonts.ready;
+    document.querySelector(control).scrollIntoView({ block: "center", behavior: "instant" });
+  }, selector);
   let anterior;
   await navegador.esperarHasta(async () => {
-    const actual = await navegador.evaluar(`(() => { const limite = document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect(); return JSON.stringify([limite.x, limite.y, limite.width, limite.height]); })()`);
+    const actual = await evaluar((control) => {
+      const caja = document.querySelector(control).getBoundingClientRect();
+      return JSON.stringify([caja.x, caja.y, caja.width, caja.height]);
+    }, selector);
     const estable = actual === anterior;
     anterior = actual;
     return estable;
@@ -122,173 +139,253 @@ async function pulsar(selector) {
 }
 
 async function pulsarTexto(texto) {
-  await navegador.evaluar(`(() => {
-    document.querySelectorAll('[data-prueba-galeria]').forEach(elemento => elemento.removeAttribute('data-prueba-galeria'));
-    const boton = [...document.querySelectorAll('#fotografia button')].find(elemento => elemento.textContent.includes(${JSON.stringify(texto)}));
-    if (!boton) throw new Error('No se encuentra el control de la galería');
-    boton.setAttribute('data-prueba-galeria', 'activo');
-  })()`);
-  await pulsar('[data-prueba-galeria="activo"]');
+  await evaluar((contenido) => {
+    document.querySelectorAll("[data-prueba-book]").forEach((elemento) => elemento.removeAttribute("data-prueba-book"));
+    const boton = [...document.querySelectorAll("#fotografia button")].find((elemento) => elemento.textContent.includes(contenido));
+    if (!boton) throw new Error("No se encuentra el control del book");
+    boton.setAttribute("data-prueba-book", "activo");
+  }, texto);
+  await pulsar('[data-prueba-book="activo"]');
 }
 
-async function pulsarFlecha(tecla) {
-  const parametros = { key: tecla, code: tecla, windowsVirtualKeyCode: tecla === "ArrowRight" ? 39 : 37 };
+async function pulsarTecla(tecla, modificadores = 0) {
+  const codigos = { Tab: 9, Escape: 27, ArrowLeft: 37, ArrowRight: 39 };
+  const parametros = { key: tecla, code: tecla, windowsVirtualKeyCode: codigos[tecla], modifiers: modificadores };
   await navegador.enviar("Input.dispatchKeyEvent", { type: "keyDown", ...parametros });
   await navegador.enviar("Input.dispatchKeyEvent", { type: "keyUp", ...parametros });
 }
 
-async function esperarIndice(indice, mayor = true) {
-  await navegador.esperarHasta(() => navegador.evaluar(`(() => { const swiper = document.querySelector(${JSON.stringify(selectorSlider)}).swiper; return swiper.activeIndex ${mayor ? ">" : "<"} ${indice} && !swiper.animating; })()`), "navegación entre fotografías");
+async function esperarFotoAbierta(indice) {
+  await esperarCondicion((dialogo, titulo) => {
+    const elemento = document.querySelector(dialogo);
+    return elemento.open && elemento.querySelector(".photography__lightbox-title")?.textContent === titulo;
+  }, "fotografía ampliada " + (indice + 1), selectorDialogo, fotografias[indice].titulo);
 }
 
-/** Las imágenes lazy deben entrar en pantalla antes de comprobar su carga y capturar. */
-async function prepararVista() {
-  await navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).scrollIntoView({ block: 'center', behavior: 'instant' })`);
-  await navegador.esperarHasta(() => navegador.evaluar(`(() => {
-    const visibles = [...document.querySelectorAll('#fotografia img')].filter(imagen => {
-      const caja = imagen.getBoundingClientRect();
-      return caja.right > 0 && caja.left < innerWidth && caja.bottom > 0 && caja.top < innerHeight;
-    });
-    return visibles.length > 0 && visibles.every(imagen => imagen.complete && imagen.naturalWidth > 0);
-  })()`), "carga de las fotografías visibles");
-  await navegador.evaluar(`(async () => {
-    const seccion = document.querySelector('#fotografia');
+async function abrirFotografia(indice) {
+  const selector = selectorEntrada + ":nth-child(" + (indice + 1) + ") .photography__open";
+  await evaluar((control) => { window.__aperturaFotografiaBook = document.querySelector(control); }, selector);
+  await pulsar(selector);
+  await esperarFotoAbierta(indice);
+  await esperarCondicion((dialogo) => document.querySelector(dialogo).contains(document.activeElement),
+    "foco dentro de la fotografía ampliada", selectorDialogo);
+}
+
+async function esperarCierre() {
+  await esperarCondicion((dialogo) => !document.querySelector(dialogo).open
+    && document.body.style.overflow !== "hidden"
+    && document.activeElement === window.__aperturaFotografiaBook,
+  "cierre y devolución del foco", selectorDialogo);
+  comprobaciones += 1;
+}
+
+async function prepararImagenes() {
+  await evaluar(async () => {
+    const imagenes = [...document.querySelectorAll("#fotografia .photography__grid img")];
+    imagenes.forEach((imagen) => { imagen.loading = "eager"; });
+    await Promise.all(imagenes.map((imagen) => imagen.decode()));
     await document.fonts.ready;
-    await Promise.all(seccion.getAnimations({ subtree: true })
-      .filter(animacion => animacion.effect.getComputedTiming().iterations !== Infinity)
-      .map(animacion => animacion.finished.catch(() => {})));
-    await new Promise(resolver => requestAnimationFrame(() => requestAnimationFrame(resolver)));
-  })()`);
+    await new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver)));
+  });
+}
+
+async function cambiarTema(oscuro) {
+  if (await evaluar(() => document.documentElement.classList.contains("dark-mode")) !== oscuro) await pulsar(".theme-toggle");
+  await esperarCondicion((tema) => document.documentElement.dataset.bsTheme === tema,
+    "aplicación del tema", oscuro ? "dark" : "light");
 }
 
 async function capturar(nombre) {
   if (!capturas) return;
-  const clip = await navegador.evaluar("(() => { const limite = document.querySelector('#fotografia').getBoundingClientRect(); return { x: Math.max(0, limite.left + scrollX), y: Math.max(0, limite.top + scrollY), width: limite.width, height: limite.height, scale: 1 }; })()");
-  const imagen = await navegador.enviar("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip });
-  await fs.writeFile(path.join(capturas, nombre + ".png"), Buffer.from(imagen.data, "base64"));
+  await prepararImagenes();
+  const clip = await evaluar(() => {
+    const caja = document.querySelector("#fotografia").getBoundingClientRect();
+    return { x: Math.max(0, caja.left + scrollX), y: Math.max(0, caja.top + scrollY), width: caja.width, height: caja.height, scale: 1 };
+  });
+  const captura = await navegador.enviar("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip });
+  await fs.writeFile(path.join(capturas, nombre + ".png"), Buffer.from(captura.data, "base64"));
 }
 
 async function ejecutar() {
   fotografias = await crearFotografias();
   navegador = await abrirNavegador();
-  if (typeof navegador.escucharEvento !== "function") throw new Error("El soporte CDP debe exponer escucharEvento.");
-  if (process.argv.includes("--capturas")) capturas = await fs.mkdtemp(path.join(os.tmpdir(), "portfolio-galeria-capturas-"));
+  if (process.argv.includes("--capturas")) {
+    capturas = path.resolve(__dirname, "../.tmp/galerias");
+    await fs.mkdir(capturas, { recursive: true });
+  }
   desuscribir = navegador.escucharEvento("Fetch.requestPaused", atenderPeticion);
   await navegador.enviar("Fetch.enable", { patterns: [{ urlPattern: "*/api/fotografias*", requestStage: "Request" }] });
-  await navegador.enviar("Emulation.setDeviceMetricsOverride", { width: 1280, height: 1000, deviceScaleFactor: 1, mobile: false });
+  await adaptarPantalla(1440);
 
   await cargarEscenario("sin fotografías", 0);
-  await verificar("!document.querySelector('#fotografia .photography__slider') && !document.querySelector('#fotografia .photography__arrow')", "el estado vacío no presenta un slider ni controles inútiles");
-
-  await cargarEscenario("una fotografía", 1);
-  await verificar(`(() => { const slider = document.querySelector(${JSON.stringify(selectorSlider)}); const imagen = slider.querySelector('img'); return slider.swiper.slides[0].getBoundingClientRect().width >= slider.getBoundingClientRect().width * 0.95 && getComputedStyle(imagen).objectFit === 'contain'; })()`, "una fotografía ocupa todo el ancho y conserva la imagen completa");
-  await verificar("[...document.querySelectorAll('#fotografia .photography__arrow')].every(boton => boton.disabled || !boton.getClientRects().length)", "una sola fotografía no ofrece navegación inservible");
+  await verificar(() => !document.querySelector("#fotografia .photography__grid")
+    && !document.querySelector("#fotografia .photography__open")
+    && !document.querySelector("#fotografia dialog").open,
+  "el estado vacío no presenta imágenes ni un diálogo abierto");
 
   await cargarEscenario("error inicial y reintento", 1, 1);
+  await verificar(() => !document.querySelector("#fotografia .photography__grid"), "un error inicial muestra el aviso sin una galería vacía engañosa");
   escenario.fallarPagina = null;
   await pulsarTexto("Reintentar");
   await esperarCantidad(1);
-  await verificar("!document.querySelector('#fotografia [role=alert]')", "reintentar recupera la galería después de un error inicial");
+  await verificar(() => !document.querySelector("#fotografia [role=alert]"), "reintentar recupera la fotografía tras un error inicial");
 
-  await cargarEscenario("paginación y navegación", 14, 2);
-  await verificar(`(() => { const swiper = document.querySelector(${JSON.stringify(selectorSlider)}).swiper; return !swiper.params.loop && !swiper.autoplay?.running && (!swiper.params.autoplay || swiper.params.autoplay.enabled === false); })()`, "la galería no inicia autoplay ni un bucle de fotografías");
-  await verificar(`JSON.stringify([...document.querySelectorAll('#fotografia .photography__slide img')].map(imagen => imagen.alt)) === ${JSON.stringify(JSON.stringify(fotografias.slice(0, 12).map((foto) => foto.imagenAlt)))}`, "las imágenes conservan los textos alternativos recibidos");
-  await navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).scrollIntoView({ block: 'center', behavior: 'instant' }); document.querySelector(${JSON.stringify(selectorSlider)}).focus({ preventScroll: true })`);
-  const antesTeclado = await indiceActual();
-  await pulsarFlecha("ArrowRight");
-  await esperarIndice(antesTeclado);
-  comprobaciones += 1;
-  await navegador.evaluar("document.querySelector('.theme-toggle').focus({ preventScroll: true })");
-  const fuera = await indiceActual();
-  await pulsarFlecha("ArrowRight");
-  await verificar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex === ${fuera}`, "las flechas fuera de la galería no cambian la fotografía");
-
-  const antesClic = await indiceActual();
-  const contadorAntes = await navegador.evaluar("document.querySelector('#fotografia .photography__position').textContent");
-  await pulsar(selectorSiguiente);
-  await esperarIndice(antesClic);
-  await verificar(`document.querySelector('#fotografia .photography__position').textContent !== ${JSON.stringify(contadorAntes)}`, "el contador refleja la fotografía alcanzada mediante las flechas");
-  await pulsar(selectorAnterior);
-  await esperarIndice(antesClic + 1, false);
-
-  for (let paso = 0; paso < 20; paso += 1) {
-    if (await navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSiguiente)}).disabled`)) break;
-    const anterior = await indiceActual();
-    await pulsar(selectorSiguiente);
-    await esperarIndice(anterior);
+  await cargarEscenario("una fotografía", 1);
+  await prepararImagenes();
+  await verificar(() => {
+    const imagen = document.querySelector("#fotografia .photography__image");
+    return imagen.alt.length > 0 && getComputedStyle(imagen).objectFit === "contain";
+  }, "una fotografía conserva su texto alternativo y encuadre");
+  await abrirFotografia(0);
+  await verificar((anterior, siguiente, cerrar) => !document.querySelector(anterior) && !document.querySelector(siguiente)
+    && document.activeElement === document.querySelector(cerrar) && document.body.style.overflow === "hidden",
+  "una sola fotografía abre el diálogo y enfoca el cierre sin navegación inútil", selectorAnterior, selectorSiguiente, selectorCerrar);
+  for (let paso = 0; paso < 5; paso++) {
+    await pulsarTecla("Tab", paso % 2 === 0 ? 0 : 8);
+    await verificar((dialogo) => document.querySelector(dialogo).contains(document.activeElement),
+      "Tab y Mayús+Tab permanecen dentro del diálogo", selectorDialogo);
   }
-  await verificar(`document.querySelector(${JSON.stringify(selectorSiguiente)}).disabled`, "la navegación se detiene al final de las fotografías cargadas");
-  const ultimoCargado = await indiceActual();
+  await pulsarTecla("Escape");
+  await esperarCierre();
+
+  await cargarEscenario("paginación con error", 14, 2);
+  await prepararImagenes();
+  await verificar((esperadas) => JSON.stringify([...document.querySelectorAll("#fotografia .photography__grid img")].map((imagen) => imagen.alt)) === JSON.stringify(esperadas),
+    "el orden DOM y los textos alternativos coinciden con el orden editorial", fotografias.slice(0, 12).map((foto) => foto.imagenAlt));
+  await evaluar(() => { window.__primerasEntradasBook = [...document.querySelectorAll("#fotografia .photography__entry")]; });
   await pulsarTexto("Cargar más fotografías");
-  await navegador.esperarHasta(() => navegador.evaluar("!!document.querySelector('#fotografia [role=alert]')"), "error de la segunda página");
-  await verificar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.slides.length === 12 && document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex === ${ultimoCargado}`, "un error al cargar más conserva fotografías y posición");
+  await esperarCondicion(() => !!document.querySelector("#fotografia [role=alert]"), "error de la segunda página");
+  await verificar(() => document.querySelectorAll("#fotografia .photography__entry").length === 12
+    && window.__primerasEntradasBook.every((elemento, indice) => elemento === document.querySelectorAll("#fotografia .photography__entry")[indice]),
+  "un fallo al cargar más conserva las doce fotografías y sus elementos DOM");
   escenario.fallarPagina = null;
   await pulsarTexto("Reintentar");
   await esperarCantidad(14);
-  await verificar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex === ${ultimoCargado} && !document.querySelector(${JSON.stringify(selectorSiguiente)}).disabled`, "añadir otra página conserva el índice y habilita la navegación restante");
-  await verificar("document.querySelector('#fotografia .photography__position').textContent.includes('14')", "el contador actualiza el total de fotografías cargadas");
-  await pulsar(selectorSiguiente);
-  await esperarIndice(ultimoCargado);
-  comprobaciones += 1;
+  await prepararImagenes();
+  await verificar(() => {
+    const alternativas = [...document.querySelectorAll("#fotografia .photography__grid img")].map((imagen) => imagen.alt);
+    return new Set(alternativas).size === 14 && !document.querySelector("#fotografia [role=alert]")
+      && ![...document.querySelectorAll("#fotografia button")].some((boton) => boton.textContent.includes("Cargar más fotografías"))
+      && window.__primerasEntradasBook.every((elemento, indice) => elemento === document.querySelectorAll("#fotografia .photography__entry")[indice]);
+  }, "el reintento añade la segunda página sin duplicar ni reemplazar las imágenes anteriores");
+  await verificar((esperadas) => JSON.stringify([...document.querySelectorAll("#fotografia .photography__title")].map((titulo) => titulo.textContent)) === JSON.stringify(esperadas),
+    "las catorce fotografías conservan el orden del panel", fotografias.map((foto) => foto.titulo));
 
-  for (const ancho of [320, 375, 768, 1280]) {
+  etapa = "proporciones y diseño adaptable";
+  for (const ancho of [320, 375, 768, 1440]) {
     await adaptarPantalla(ancho);
-    await verificar("document.documentElement.scrollWidth <= innerWidth + 1", `la galería no desborda la página a ${ancho}px`);
+    await prepararImagenes();
+    await verificar(() => document.documentElement.scrollWidth <= innerWidth + 1
+      && [...document.querySelectorAll("#fotografia .photography__entry")].every((entrada) => {
+        const caja = entrada.getBoundingClientRect();
+        return caja.width > 0 && caja.left >= -1 && caja.right <= innerWidth + 1;
+      }), "el book no desborda a " + ancho + "px");
+    await verificar(() => [...document.querySelectorAll("#fotografia .photography__grid img")].every((imagen) => {
+      const caja = imagen.getBoundingClientRect();
+      return imagen.complete && imagen.naturalWidth > 0 && getComputedStyle(imagen).objectFit === "contain"
+        && Math.abs(caja.width / caja.height - imagen.naturalWidth / imagen.naturalHeight) < 0.015;
+    }), "los encuadres horizontales, verticales y cuadrados no se recortan a " + ancho + "px");
+    const columnas = ancho < 768 ? 1 : ancho < 992 ? 2 : 12;
+    await verificar((esperadas) => getComputedStyle(document.querySelector("#fotografia .photography__grid")).gridTemplateColumns.split(/\s+/u).length === esperadas,
+      "la composición utiliza " + columnas + " columnas a " + ancho + "px", columnas);
   }
+  await verificar(() => {
+    const entradas = [...document.querySelectorAll("#fotografia .photography__entry")];
+    const primera = entradas[0].getBoundingClientRect();
+    const segunda = entradas[1].getBoundingClientRect();
+    return primera.width > segunda.width * 1.3 && segunda.top > primera.top + 30;
+  }, "el escritorio combina anchuras distintas y desplazamientos de un book irregular");
 
-  for (const oscuro of [false, true]) {
-    if (await navegador.evaluar("document.documentElement.classList.contains('dark-mode')") !== oscuro) await pulsar(".theme-toggle");
-    // Chrome muestra :focus-visible al usar el teclado, no tras un clic seguido de focus().
-    await navegador.enviar("Input.dispatchKeyEvent", { type: "keyDown", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
-    await navegador.enviar("Input.dispatchKeyEvent", { type: "keyUp", key: "Tab", code: "Tab", windowsVirtualKeyCode: 9 });
-    await navegador.evaluar(`document.querySelector(${JSON.stringify(selectorAnterior)}).focus({ preventScroll: true })`);
-    await verificar(`(() => { const boton = document.querySelector(${JSON.stringify(selectorAnterior)}); const estilo = getComputedStyle(boton); return document.documentElement.dataset.bsTheme === ${JSON.stringify(oscuro ? "dark" : "light")} && !boton.disabled && ((estilo.outlineStyle !== 'none' && parseFloat(estilo.outlineWidth) > 0) || estilo.boxShadow !== 'none'); })()`, `las flechas mantienen foco visible en tema ${oscuro ? "oscuro" : "claro"}`);
-    await prepararVista();
-    comprobaciones += 1;
-    await capturar(oscuro ? "galeria-oscura" : "galeria-clara");
-  }
-
-  etapa = "movimiento reducido";
-  const antesReducir = await indiceActual();
-  await navegador.enviar("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
-  await navegador.esperarHasta(() => navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.params.speed === 0`), "velocidad adaptada a movimiento reducido");
-  await verificar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex === ${antesReducir}`, "cambiar la preferencia de movimiento no reinicia la galería");
+  etapa = "diálogo y navegación";
+  await abrirFotografia(2);
+  await verificar((imagen, alt) => {
+    const dialogo = document.querySelector("#fotografia dialog");
+    const ampliada = dialogo.querySelector(".photography__lightbox-image");
+    return dialogo.hasAttribute("aria-labelledby") && ampliada.src === imagen && ampliada.alt === alt
+      && getComputedStyle(ampliada).objectFit === "contain";
+  }, "la ampliación muestra la fotografía correcta con nombre accesible y encuadre completo", fotografias[2].imagen, fotografias[2].imagenAlt);
+  await pulsarTecla("ArrowRight");
+  await esperarFotoAbierta(3);
+  comprobaciones += 1;
+  await pulsarTecla("ArrowLeft");
+  await esperarFotoAbierta(2);
+  comprobaciones += 1;
+  await pulsar(selectorSiguiente);
+  await esperarFotoAbierta(3);
   await pulsar(selectorAnterior);
-  await esperarIndice(antesReducir, false);
-  await verificar("parseFloat(getComputedStyle(document.querySelector('#fotografia .swiper-wrapper')).transitionDuration) === 0", "movimiento reducido elimina la transición del desplazamiento");
-  const antesRestaurar = await indiceActual();
-  await navegador.enviar("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
-  await navegador.esperarHasta(() => navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.params.speed > 0`), "restauración de la velocidad habitual");
-  await verificar(`document.querySelector(${JSON.stringify(selectorSlider)}).swiper.activeIndex === ${antesRestaurar}`, "restaurar el movimiento conserva la posición");
-  etapa = "gesto móvil";
-  await adaptarPantalla(375);
-  await navegador.enviar("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
-  await navegador.evaluar(`document.querySelector(${JSON.stringify(selectorSlider)}).scrollIntoView({ block: 'center', behavior: 'instant' })`);
-  const zona = await navegador.evaluar("(() => { const limite = document.querySelector('#fotografia .swiper-slide-active .photography__image-frame').getBoundingClientRect(); return { izquierda: limite.left, ancho: limite.width, y: limite.top + limite.height / 2 }; })()");
-  const antesGesto = await indiceActual();
-  await navegador.enviar("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: zona.izquierda + zona.ancho * 0.82, y: zona.y }] });
-  for (let paso = 1; paso <= 5; paso += 1) {
-    await navegador.enviar("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: zona.izquierda + zona.ancho * (0.82 - paso * 0.13), y: zona.y }] });
+  await esperarFotoAbierta(2);
+  comprobaciones += 1;
+  for (let paso = 0; paso < 8; paso++) {
+    await pulsarTecla("Tab", paso < 4 ? 0 : 8);
+    await verificar((dialogo) => document.querySelector(dialogo).contains(document.activeElement),
+      "el foco permanece dentro al recorrer todos los controles de la ampliación", selectorDialogo);
   }
-  await navegador.enviar("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  await esperarIndice(antesGesto);
-  comprobaciones += 1;
-  await prepararVista();
-  comprobaciones += 1;
-  await capturar("galeria-movil");
+  await pulsarTecla("Escape");
+  await esperarCierre();
 
-  assert.deepEqual(erroresIntercepcion, [], "las respuestas de prueba se interceptan correctamente");
-  assert.deepEqual(navegador.errores, [], "sin excepciones JavaScript");
-  console.log(`Correcto: ${comprobaciones} comprobaciones de galería; estados vacío/único/error, paginación, navegación, teclado, gesto móvil, temas y movimiento reducido. Sin cambios en la base de datos.`);
-  if (capturas) console.log(`Capturas: ${capturas}`);
+  await abrirFotografia(0);
+  await verificar((anterior) => document.querySelector(anterior).disabled, "la primera fotografía deshabilita la navegación anterior", selectorAnterior);
+  await pulsarTecla("ArrowLeft");
+  await esperarFotoAbierta(0);
+  comprobaciones += 1;
+  await pulsar(selectorCerrar);
+  await esperarCierre();
+  await abrirFotografia(13);
+  await verificar((siguiente) => document.querySelector(siguiente).disabled, "la última fotografía deshabilita la navegación siguiente", selectorSiguiente);
+  await pulsarTecla("ArrowRight");
+  await esperarFotoAbierta(13);
+  await navegador.enviar("Input.dispatchMouseEvent", { type: "mousePressed", x: 1, y: 1, button: "left", clickCount: 1 });
+  await navegador.enviar("Input.dispatchMouseEvent", { type: "mouseReleased", x: 1, y: 1, button: "left", clickCount: 1 });
+  await esperarCierre();
+
+  etapa = "temas y movimiento reducido";
+  for (const oscuro of [false, true]) {
+    await cambiarTema(oscuro);
+    await pulsarTecla("Tab");
+    await evaluar((control) => document.querySelector(control).focus({ preventScroll: true }), selectorAbrir);
+    await verificar((control) => {
+      const estilo = getComputedStyle(document.querySelector(control));
+      const seccion = getComputedStyle(document.querySelector("#fotografia"));
+      return estilo.outlineStyle !== "none" && parseFloat(estilo.outlineWidth) > 0
+        && seccion.color !== seccion.backgroundColor;
+    }, "el book mantiene foco visible y contraste de superficies en tema " + (oscuro ? "oscuro" : "claro"), selectorAbrir);
+    await capturar(oscuro ? "fotografia-oscura" : "fotografia-clara");
+  }
+  await abrirFotografia(0);
+  await navegador.enviar("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
+  await verificar(() => parseFloat(getComputedStyle(document.querySelector("#fotografia .photography__zoom")).transitionDuration) === 0,
+    "movimiento reducido elimina las transiciones decorativas");
+  await esperarFotoAbierta(0);
+  await pulsarTecla("ArrowRight");
+  await esperarFotoAbierta(1);
+  comprobaciones += 1;
+  await pulsarTecla("Escape");
+  await esperarCierre();
+  await navegador.enviar("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
+
+  etapa = "ampliación móvil";
+  await adaptarPantalla(375, 620);
+  await abrirFotografia(1);
+  await verificar(() => {
+    const dialogo = document.querySelector("#fotografia dialog").getBoundingClientRect();
+    const cerrar = document.querySelector('#fotografia button[aria-label="Cerrar fotografía"]').getBoundingClientRect();
+    const imagen = document.querySelector("#fotografia .photography__lightbox-image").getBoundingClientRect();
+    return dialogo.top >= 0 && dialogo.bottom <= innerHeight + 1 && dialogo.left >= 0 && dialogo.right <= innerWidth + 1
+      && cerrar.top >= 0 && cerrar.bottom <= innerHeight && imagen.height > 0;
+  }, "la fotografía vertical ampliada y el cierre caben en una pantalla móvil");
+  await pulsarTecla("Escape");
+  await esperarCierre();
+  await capturar("fotografia-movil");
+
+  assert.deepEqual(erroresIntercepcion, [], "las respuestas sintéticas se interceptan correctamente");
+  assert.deepEqual(navegador.errores, [], "el book no genera excepciones JavaScript");
+  console.log("Correcto: " + comprobaciones + " comprobaciones del book; vacío, errores y reintento, paginación, grid irregular, encuadres completos, diálogo, foco, teclado, temas y móvil. Sin cambios en la base de datos.");
+  if (capturas) console.log("Capturas: " + capturas);
 }
 
 ejecutar().catch(async (error) => {
-  console.error(`Fallo en ${etapa}: ${error.message}`);
-  if (capturas && navegador) {
-    await capturar("fallo").catch(() => {});
-    console.error(`Capturas de diagnóstico: ${capturas}`);
-  }
+  console.error("Fallo en " + etapa + ": " + error.message);
+  if (capturas && navegador) await capturar("fotografia-fallo").catch(() => {});
   process.exitCode = 1;
 }).finally(async () => {
   desuscribir?.();

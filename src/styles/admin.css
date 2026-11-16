@@ -223,7 +223,7 @@
   }
 }
 
-/* El formulario de proyectos comparte la estructura visual del gestor de fotografía. */
+/* Los gestores de proyectos, ilustración y fotografía comparten la estructura visual. */
 .admin__fuente-imagen {
   padding: 1rem;
   border: 1px solid var(--color-muted);

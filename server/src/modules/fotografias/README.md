@@ -1,6 +1,12 @@
 # Módulo de fotografías
 
-`crearRutasFotografias` se monta directamente en la aplicación. Incluye las rutas `/api/fotografias`, `/api/admin/fotografias` y `/api/imagenes/:nombre`. Recibe el pool MySQL, el directorio privado de imágenes y los middleware de autenticación y CSRF.
+`crearRutasFotografias` adapta el módulo compartido `../galerias/` para la colección independiente `fotografias`. Se monta directamente en la aplicación e incluye `/api/fotografias`, `/api/admin/fotografias` y `/api/imagenes/fotografias/:nombre`. Recibe el pool MySQL, su directorio privado de imágenes y los middleware de autenticación y CSRF. Las firmas de repositorio y validación específicas de fotografía se conservan.
+
+Ilustración usa los adaptadores de `../ilustraciones/`, la tabla `ilustraciones` y las rutas equivalentes `/api/ilustraciones`, `/api/admin/ilustraciones` y `/api/imagenes/ilustraciones/:nombre`. El alias anterior `/api/imagenes/:nombre` sirve exclusivamente ilustraciones, con el mismo control de publicación y administrador activo. Proyectos mantiene su módulo y `/api/imagenes/proyectos/:nombre`.
+
+La migración `003_separar_ilustraciones_fotografias.sql` conserva el contenido anterior en `ilustraciones` y crea `fotografias` vacía. Los archivos referenciados se trasladan con verificación SHA256 antes de iniciar la API; el proceso puede repetirse, no sobrescribe destinos distintos y no retira una fuente utilizada también por fotografías. `db:pruebas` no traslada archivos reales. Las carpetas privadas son `server/storage/ilustraciones/`, `fotografias/` y `proyectos/`.
+
+En la portada, `Ilustracion.jsx` conserva el carrusel Swiper. `Fotografia.jsx` muestra un book y un visor ampliado. Los hooks específicos usan `useGaleriaPublica`; el panel comparte `GestionGaleria`, `FormularioObra` y `ListadoObras` con estado separado por colección.
 
 El listado público devuelve únicamente fotografías publicadas. El panel obtiene también los borradores. Ambos admiten `pagina` (desde 1, hasta 1000000) y `limite` (de 1 a 50); sus valores predeterminados son 12 elementos en público y 20 en administración. La respuesta contiene `{ datos, meta: { pagina, limite, total } }`.
 

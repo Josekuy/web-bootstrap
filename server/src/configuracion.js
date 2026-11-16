@@ -21,6 +21,12 @@ export function cargarConfiguracion(cambios = {}) {
   if (produccion && origenes.some((origen) => !origen.startsWith("https://"))) {
     throw new Error("En producción APP_ORIGINS debe contener únicamente orígenes HTTPS.");
   }
+  const directorioImagenesFotografias = cambios.directorioImagenesFotografias
+    || cambios.directorioImagenes || path.join(raizProyecto, "server/storage/fotografias");
+  const directorioImagenesIlustraciones = cambios.directorioImagenesIlustraciones
+    || (cambios.directorioImagenes || cambios.directorioImagenesFotografias
+      ? path.join(directorioImagenesFotografias, "ilustraciones")
+      : path.join(raizProyecto, "server/storage/ilustraciones"));
   return {
     produccion,
     puerto: Number(process.env.PORT || 3001),
@@ -30,7 +36,6 @@ export function cargarConfiguracion(cambios = {}) {
     confiarProxy: process.env.TRUST_PROXY === "1" ? 1 : false,
     nombreCookie: "portfolio.sid",
     duracionSesion: 8 * 60 * 60 * 1000,
-    directorioImagenes: path.join(raizProyecto, "server/storage/fotografias"),
     directorioImagenesProyectos: path.join(raizProyecto, "server/storage/proyectos"),
     basePruebas,
     baseDatos: {
@@ -41,5 +46,9 @@ export function cargarConfiguracion(cambios = {}) {
       database: baseDatos,
     },
     ...cambios,
+    // directorioImagenes conserva el nombre anterior para los consumidores existentes.
+    directorioImagenes: directorioImagenesFotografias,
+    directorioImagenesFotografias,
+    directorioImagenesIlustraciones,
   };
 }

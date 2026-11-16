@@ -4,13 +4,13 @@ import { ErrorAplicacion } from "../../errores.js";
 import { crearRutasImagenes, eliminarImagen, procesarYGuardarImagen } from "../imagenes/imagenes.js";
 import { borrarProyecto, crearProyecto, editarProyecto, listarProyectos } from "./repositorio.js";
 import {
-  validarEleccionImagen, validarIdProyecto, validarMetadatosProyecto, validarPaginacionProyectos,
+  validarArchivosDetalle, validarEleccionImagen, validarIdProyecto, validarMetadatosProyecto, validarPaginacionProyectos,
 } from "./validacion.js";
 
 const recibirArchivo = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024, files: 1, fields: 11, parts: 12, fieldNameSize: 100, fieldSize: 24 * 1024 },
-}).single("imagen");
+  limits: { fileSize: 8 * 1024 * 1024, files: 9, fields: 13, parts: 22, fieldNameSize: 100, fieldSize: 32 * 1024 },
+}).fields([{ name: "imagen", maxCount: 1 }, { name: "imagenesDetalleArchivos", maxCount: 8 }]);
 
 function recibirImagen(peticion, respuesta, siguiente) {
   recibirArchivo(peticion, respuesta, (error) => {
@@ -31,6 +31,29 @@ async function limpiarImagen(nombreArchivo, directorioImagenes, operacion, proye
   }
 }
 
+async function limpiarImagenes(nombres, directorioImagenes, operacion, proyectoId) {
+  for (const nombre of nombres) await limpiarImagen(nombre, directorioImagenes, operacion, proyectoId);
+}
+
+async function procesarImagenes(peticion, directorioImagenes) {
+  const guardadas = [];
+  try {
+    const portada = peticion.files?.imagen?.[0];
+    const imagen = portada ? await procesarYGuardarImagen(portada, directorioImagenes) : null;
+    if (imagen) guardadas.push(imagen.nombreArchivo);
+    const detalles = [];
+    for (const archivo of peticion.files?.imagenesDetalleArchivos ?? []) {
+      const detalle = await procesarYGuardarImagen(archivo, directorioImagenes);
+      guardadas.push(detalle.nombreArchivo);
+      detalles.push(detalle);
+    }
+    return { imagen, detalles, guardadas };
+  } catch (error) {
+    await limpiarImagenes(guardadas, directorioImagenes, "compensar-procesado");
+    throw error;
+  }
+}
+
 /** La sesión y CSRF se verifican antes de procesar archivos o escribir en BD. */
 export function crearRutasProyectos({ pool, directorioImagenes, exigirAdmin, exigirCsrf }) {
   const rutas = Router();
@@ -47,13 +70,14 @@ export function crearRutasProyectos({ pool, directorioImagenes, exigirAdmin, exi
 
   rutas.post("/api/admin/proyectos", exigirAdmin, exigirCsrf, recibirImagen, async (peticion, respuesta) => {
     const datos = validarMetadatosProyecto(peticion.body ?? {}, { multipart: Boolean(peticion.is("multipart/form-data")) });
-    validarEleccionImagen(datos, peticion.file);
-    const imagen = peticion.file ? await procesarYGuardarImagen(peticion.file, directorioImagenes) : null;
+    validarEleccionImagen(datos, peticion.files?.imagen?.[0]);
+    validarArchivosDetalle(datos, peticion.files?.imagenesDetalleArchivos);
+    const { imagen, detalles, guardadas } = await procesarImagenes(peticion, directorioImagenes);
     let proyecto;
     try {
-      proyecto = await crearProyecto(pool, datos, imagen);
+      proyecto = await crearProyecto(pool, datos, imagen, detalles);
     } catch (error) {
-      if (imagen && !error.conservarArchivo) await limpiarImagen(imagen.nombreArchivo, directorioImagenes, "compensar-creacion");
+      if (!error.conservarArchivo) await limpiarImagenes(guardadas, directorioImagenes, "compensar-creacion");
       throw error;
     }
     respuesta.status(201).json({ datos: proyecto });
@@ -65,26 +89,27 @@ export function crearRutasProyectos({ pool, directorioImagenes, exigirAdmin, exi
       parcial: true,
       multipart: Boolean(peticion.is("multipart/form-data")),
     });
-    validarEleccionImagen(datos, peticion.file, { parcial: true });
-    if (!peticion.file && !Object.keys(datos).length) {
+    validarEleccionImagen(datos, peticion.files?.imagen?.[0], { parcial: true });
+    validarArchivosDetalle(datos, peticion.files?.imagenesDetalleArchivos);
+    if (!peticion.files?.imagen?.length && !Object.keys(datos).length) {
       throw new ErrorAplicacion(400, "CAMBIOS_REQUERIDOS", "Indica los datos que quieres modificar.");
     }
-    const imagen = peticion.file ? await procesarYGuardarImagen(peticion.file, directorioImagenes) : null;
+    const { imagen, detalles, guardadas } = await procesarImagenes(peticion, directorioImagenes);
     let resultado;
     try {
-      resultado = await editarProyecto(pool, id, datos, imagen);
+      resultado = await editarProyecto(pool, id, datos, imagen, detalles);
     } catch (error) {
-      if (imagen && !error.conservarArchivo) await limpiarImagen(imagen.nombreArchivo, directorioImagenes, "compensar-edicion", id);
+      if (!error.conservarArchivo) await limpiarImagenes(guardadas, directorioImagenes, "compensar-edicion", id);
       throw error;
     }
-    await limpiarImagen(resultado.archivoAnterior, directorioImagenes, "reemplazo", id);
+    await limpiarImagenes(resultado.archivosAnteriores, directorioImagenes, "reemplazo", id);
     respuesta.json({ datos: resultado.proyecto });
   });
 
   rutas.delete("/api/admin/proyectos/:id", exigirAdmin, exigirCsrf, async (peticion, respuesta) => {
     const id = validarIdProyecto(peticion.params.id);
     const resultado = await borrarProyecto(pool, id);
-    await limpiarImagen(resultado.archivoAnterior, directorioImagenes, "borrado", id);
+    await limpiarImagenes(resultado.archivosAnteriores, directorioImagenes, "borrado", id);
     respuesta.json({ datos: { id } });
   });
 

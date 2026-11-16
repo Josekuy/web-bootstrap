@@ -1,0 +1,1 @@
+ALTER TABLE proyectos ADD COLUMN resumen VARCHAR(300) NOT NULL DEFAULT '' AFTER titulo;

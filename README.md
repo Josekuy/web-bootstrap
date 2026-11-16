@@ -1,6 +1,6 @@
 # Portfolio de José — React, Express y MySQL
 
-Portfolio de diseño gráfico y desarrollo web con React, Vite, Bootstrap 5, CSS propio y Anime.js. Los proyectos y las fotografías se gestionan desde un panel con API Express y base MySQL/MariaDB. Los textos de la portada siguen en un archivo local.
+Portfolio de diseño gráfico y desarrollo web con React, Vite, Bootstrap 5, CSS propio y Anime.js. Los proyectos, las ilustraciones y las fotografías se gestionan desde un panel con API Express y base MySQL/MariaDB. Los textos de la portada siguen en un archivo local.
 
 ## Preparación local
 
@@ -40,28 +40,42 @@ Abre `http://127.0.0.1:5173/` para la portada y `http://127.0.0.1:5173/admin` pa
 
 Si aparece `ECONNREFUSED 127.0.0.1:3001`, el proxy de Vite no encuentra Express: revisa los mensajes `API`. Un fallo de conexión a `3306` corresponde a MySQL; comprueba que esté iniciado y que la conexión de `.env` sea correcta.
 
+### Actualización de las galerías
+
+Al actualizar una instalación anterior, ejecuta `npm run db:preparar` antes de arrancar la aplicación. La migración `003` convierte la antigua colección de fotografías en **Ilustración**, conservando identificadores, textos, orden y estado. La nueva **Fotografía** comienza vacía y se administra por separado. Los archivos existentes se trasladan a `server/storage/ilustraciones/` comprobando su contenido antes de retirar la copia de origen. Repetir la preparación conserva las dos colecciones.
+
+La portada muestra Ilustración y, a continuación, Fotografía. En `/admin` hay tres pestañas: Proyectos, Ilustración y Fotografía. Para añadir contenido al book, selecciona Fotografía, sube una imagen, completa sus textos y guarda su estado como publicado.
+
 ## Contenido e interfaz
 
 | Ubicación | Qué se mantiene ahí |
 | --- | --- |
 | `src/data/contenido.js` | Navegación, presentación, biografía y contacto. |
-| Panel `/admin`, sección Proyectos | Proyectos, tecnologías, portadas subidas o externas y enlaces opcionales. |
-| Panel `/admin`, sección Fotografía | Fotografías y sus metadatos. Ambas secciones permiten ordenar, guardar borradores y publicar. |
+| Panel `/admin`, sección Proyectos | Proyectos con resumen para la tarjeta y descripción detallada, tecnologías, portada, galería independiente de hasta 8 imágenes de detalle y enlaces opcionales. |
+| Panel `/admin`, sección Ilustración | Obras del carrusel y sus metadatos. |
+| Panel `/admin`, sección Fotografía | Imágenes del book fotográfico y sus metadatos. Las tres secciones permiten ordenar, guardar borradores y publicar. |
 | `src/data/proyectos.js` | Solo el contrato JSDoc; no contiene proyectos ni alimenta la portada. |
 | `server/semillas/proyectos-iniciales.js` | Copia antigua consumida únicamente por `proyectos:importar`. |
 | `src/data/fotografias.js` | Tipo JSDoc y colección vacía para usos explícitos de la vista; no alimenta la galería habitual. |
+| `src/data/ilustraciones.js` | Tipo JSDoc de ilustración; el contenido habitual procede de su API. |
 
-Los textos pendientes usan Lorem ipsum. Los correos y enlaces sin configurar se representan con `null` o listas vacías. Proyectos y fotografía muestran carga, errores con reintento, paginación y estado vacío. Los cambios publicados desde el panel aparecen mediante la API sin recompilar la web.
+Los textos pendientes usan Lorem ipsum. Los correos y enlaces sin configurar se representan con `null` o listas vacías. Proyectos, ilustración y fotografía muestran carga, errores con reintento, paginación y estado vacío. Los cambios publicados desde el panel aparecen mediante la API sin recompilar la web.
 
-«Ver proyecto» abre una ficha en un modal de Bootstrap 5, con cierre mediante su X, Escape o clic en el fondo y devolución del foco a la tarjeta. `ProjectDetail.jsx` representa el modal mediante un portal y `ProjectCard.jsx` lo abre con los atributos oficiales de Bootstrap. Los enlaces opcionales solo aparecen cuando existen destinos válidos.
+«Ver proyecto» abre una ficha en un modal de Bootstrap 5, con cierre mediante su X, Escape o clic en el fondo y devolución del foco a la tarjeta. La portada puede ser un mockup y la ficha mostrar una o varias imágenes distintas del diseño completo, sin recortarlo. El panel permite añadir hasta 8 imágenes de detalle, ordenar, quitar y describir cada una. Si no se añade ninguna, la ficha utiliza la portada. `ProjectDetail.jsx` representa el modal mediante un portal y `ProjectCard.jsx` lo abre con los atributos oficiales de Bootstrap. Los enlaces opcionales solo aparecen cuando existen destinos válidos.
+
+Para actualizar una instalación existente, ejecuta `npm run db:preparar`: la migración `004` añade la galería de proyectos sin cambiar sus portadas ni sus datos actuales.
+
+La migración `005`, aplicada con el mismo comando, añade el resumen de la tarjeta sin modificar las descripciones anteriores. En el panel se edita un resumen breve de hasta 300 caracteres y una descripción detallada de hasta 5000 para la ficha. Si el resumen está vacío, la tarjeta muestra un extracto automático de hasta 180 caracteres. La descripción de la ficha conserva sus párrafos y saltos de línea.
 
 `src/App.jsx` organiza las secciones y carga el panel al visitar `/admin`. `src/styles/custom.css` y `custom_dark.css` definen ambos temas; `admin.css` contiene los estilos del panel. Se mantiene el grid personalizado de tres, dos y una columnas.
 
-Fotografía utiliza Swiper en una galería horizontal, con estilos propios en `src/styles/photography.css`: deslizamiento táctil, flechas, contador y navegación con teclado mientras el foco está dentro. Conserva el encuadre completo de cada imagen y permite ampliarla en otra pestaña. No avanza automáticamente y respeta el movimiento reducido. Con una sola foto no aparecen controles innecesarios; «Cargar más fotografías» mantiene la posición al añadir otra página de la API.
+Ilustración conserva la galería horizontal Swiper, ahora en `Ilustracion.jsx` y `src/styles/illustration.css`: deslizamiento táctil, flechas, contador y teclado mientras el foco está dentro. Conserva los encuadres y la posición al cargar más resultados, sin avance automático.
+
+Fotografía utiliza un grid editorial irregular en `Fotografia.jsx` y `src/styles/photography.css`, con distintos tamaños y proporciones completas. En móvil se convierte en una columna. Al seleccionar una imagen se abre un visor modal con anterior/siguiente, teclado, Escape y devolución del foco. Ambas galerías respetan los temas claro y oscuro y el movimiento reducido.
 
 Las funciones propias están en español. Se conservan los nombres de los archivos existentes, las clases CSS y las APIs externas. El tema usa `theme` en localStorage, `dark-mode` y `data-bs-theme` en `html`; respeta la preferencia del sistema cuando no hay elección guardada y se aplica antes de montar React. Las fuentes se cargan desde Google Fonts y las imágenes ilustrativas de proyectos desde Unsplash.
 
-Los borradores de ambos recursos se protegen en la API y en la entrega de archivos subidos. Las portadas externas de proyectos solo admiten HTTPS; su disponibilidad y privacidad dependen del proveedor. El backend valida esas URL y no las descarga.
+Los borradores de los tres recursos se protegen en la API y en la entrega de archivos subidos. Ilustración y Fotografía utilizan tablas y directorios independientes, con las mismas reglas de subida y acceso. Las portadas externas de proyectos solo admiten HTTPS; su disponibilidad y privacidad dependen del proveedor. El backend valida esas URL y no las descarga.
 
 ## Comprobaciones
 
@@ -81,13 +95,15 @@ Con **API y Vite** activos en otras terminales:
 ```sh
 npm run comprobar:navegador
 npm run comprobar:admin
+npm run comprobar:admin:fotografia
 npm run comprobar:proyectos
+npm run comprobar:ilustracion
 npm run comprobar:galeria
 ```
 
 Los comprobadores utilizan Chrome/Chromium instalado y un perfil temporal sin ventana; `CHROME_PATH` permite indicar su ejecutable y `PORTFOLIO_URL` cambiar la URL de Vite. Cubren la portada, el panel de fotografía y la gestión de proyectos. Los recorridos administrativos usan las credenciales locales sin imprimirlas y crean sus propios datos de prueba. La opción `--capturas` guarda capturas opcionales en una carpeta temporal al ejecutar los scripts con `node`.
 
-`comprobar:galeria` intercepta las lecturas de fotografías dentro del navegador y utiliza imágenes geométricas temporales. Comprueba navegación, tamaños de pantalla, temas, movimiento reducido, errores y paginación sin modificar las fotografías de MySQL.
+`comprobar:admin` recorre Ilustración y `comprobar:admin:fotografia` la nueva Fotografía. `comprobar:ilustracion` verifica el carrusel y `comprobar:galeria` el book y su visor. Estos dos últimos interceptan los listados en Chrome con imágenes sintéticas y no modifican los datos de MySQL.
 
 `npm run preview` permite previsualizar el resultado de Vite, pero no inicia Express ni configura su proxy de desarrollo. Para servir interfaz y API juntas se utiliza `npm start` con `NODE_ENV=production`, después de compilar y preparar la configuración HTTPS descrita en la guía del backend.
 

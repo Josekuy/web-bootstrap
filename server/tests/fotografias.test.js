@@ -232,7 +232,7 @@ test("un borrador no es accesible por su URL y una retirada vuelve a impedir la 
     execute: async (consulta, parametros) => [parametros[0] === imagen.nombreArchivo ? [{ estado }] : []],
   };
   const origen = await iniciarServidor(contexto, directorio, pool);
-  const ruta = `${origen}/api/imagenes/${imagen.nombreArchivo}`;
+  const ruta = `${origen}/api/imagenes/fotografias/${imagen.nombreArchivo}`;
 
   let respuesta = await fetch(ruta);
   assert.equal(respuesta.status, 404);

@@ -2,64 +2,63 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import SelectorTema from "../components/ThemeToggle";
 import { solicitarApi } from "../services/api";
 import AccesoAdmin from "./AccesoAdmin";
-import FormularioFotografia from "./FormularioFotografia";
-import ListadoFotografias from "./ListadoFotografias";
+import GestionGaleria from "./GestionGaleria";
+import { galerias } from "./galerias";
 import GestionProyectos from "./GestionProyectos";
 import "../styles/admin.css";
 
+const secciones = [
+  { recurso: "proyectos", titulo: "Proyectos" },
+  galerias.ilustraciones,
+  galerias.fotografias,
+];
+
+async function consultarSesion(senal) {
+  const respuesta = await solicitarApi("/api/admin/sesion", { signal: senal });
+  if (senal?.aborted) return null;
+  const datos = respuesta.datos;
+  if (typeof datos?.autenticado !== "boolean" || typeof datos.csrfToken !== "string") {
+    throw new Error("No se ha podido comprobar la sesión. Vuelve a intentarlo.");
+  }
+  return datos;
+}
+
 function PanelAdmin() {
-  const [seccion, establecerSeccion] = useState("fotografias");
-  const [ocupadoProyectos, establecerOcupadoProyectos] = useState(false);
+  const [seccion, establecerSeccion] = useState("ilustraciones");
+  const [ocupadoGestion, establecerOcupadoGestion] = useState(false);
   const [estadoSesion, establecerEstadoSesion] = useState({ cargando: true, datos: null, error: "" });
   const [revisionSesion, establecerRevisionSesion] = useState(0);
   const [avisoSesion, establecerAvisoSesion] = useState("");
   const [errorAcceso, establecerErrorAcceso] = useState("");
   const [operacion, establecerOperacion] = useState("");
   const [errorOperacion, establecerErrorOperacion] = useState("");
-  const [mensajeExito, establecerMensajeExito] = useState("");
-  const [pagina, establecerPagina] = useState(1);
-  const [revisionListado, establecerRevisionListado] = useState(0);
-  const [listado, establecerListado] = useState({
-    datos: [], meta: { pagina: 1, limite: 20, total: 0 }, cargando: true, error: "",
-  });
-  const [fotografiaEditada, establecerFotografiaEditada] = useState(null);
-  const [revisionFormulario, establecerRevisionFormulario] = useState(0);
   const referenciaOperacion = useRef(null);
   const referenciaError = useRef(null);
-  const referenciaExito = useRef(null);
   const referenciaTitulo = useRef(null);
   const autenticado = Boolean(estadoSesion.datos?.autenticado);
-  const ocupado = Boolean(operacion) || ocupadoProyectos;
+  const ocupado = Boolean(operacion) || ocupadoGestion;
 
-  // Un nuevo intento de proyectos también retira los avisos globales de una sesión ya renovada.
-  const cambiarOcupadoProyectos = useCallback((nuevoEstado) => {
-    establecerOcupadoProyectos(nuevoEstado);
+  // Cada gestor comunica sus escrituras para bloquear navegación y cierre de sesión.
+  const cambiarOcupadoGestion = useCallback((nuevoEstado) => {
+    establecerOcupadoGestion(nuevoEstado);
     if (nuevoEstado) {
       establecerErrorOperacion("");
-      establecerMensajeExito("");
     }
   }, []);
 
   const renovarSesion = useCallback(async (senal) => {
-    const respuesta = await solicitarApi("/api/admin/sesion", { signal: senal });
-    if (senal?.aborted) return null;
-    const datos = respuesta.datos;
-    if (typeof datos?.autenticado !== "boolean" || typeof datos.csrfToken !== "string") {
-      throw new Error("No se ha podido comprobar la sesión. Vuelve a intentarlo.");
-    }
+    const datos = await consultarSesion(senal);
+    if (!datos) return null;
     establecerEstadoSesion({ datos, cargando: false, error: "" });
     return datos;
   }, []);
 
   const volverAlAcceso = useCallback(() => {
-    establecerOcupadoProyectos(false);
+    establecerOcupadoGestion(false);
     establecerAvisoSesion("La sesión ha caducado. Identifícate de nuevo para continuar.");
     establecerErrorAcceso("");
     establecerEstadoSesion({ datos: null, cargando: true, error: "" });
-    establecerFotografiaEditada(null);
     establecerErrorOperacion("");
-    establecerMensajeExito("");
-    establecerPagina(1);
     establecerRevisionSesion((anterior) => anterior + 1);
   }, []);
 
@@ -89,51 +88,26 @@ function PanelAdmin() {
 
   useEffect(() => {
     const controlador = new AbortController();
-    renovarSesion(controlador.signal).catch((error) => {
+    consultarSesion(controlador.signal).then((datos) => {
+      if (datos) establecerEstadoSesion({ datos, cargando: false, error: "" });
+    }).catch((error) => {
       if (controlador.signal.aborted || error.name === "AbortError") return;
       establecerEstadoSesion({ datos: null, cargando: false, error: error.message });
     });
     return () => controlador.abort();
-  }, [revisionSesion, renovarSesion]);
-
-  useEffect(() => {
-    if (!autenticado || seccion !== "fotografias") return;
-    const controlador = new AbortController();
-
-    async function cargarListado() {
-      establecerListado((anterior) => ({ ...anterior, cargando: true, error: "" }));
-      try {
-        const respuesta = await solicitarApi(`/api/admin/fotografias?pagina=${pagina}&limite=20`, {
-          signal: controlador.signal,
-        });
-        if (controlador.signal.aborted) return;
-        establecerListado({ datos: respuesta.datos, meta: respuesta.meta, cargando: false, error: "" });
-      } catch (error) {
-        if (controlador.signal.aborted || error.name === "AbortError") return;
-        const recuperado = await recuperarAcceso(error, controlador.signal);
-        if (!controlador.signal.aborted) {
-          establecerListado((anterior) => ({ ...anterior, cargando: false, error: recuperado ? "" : error.message }));
-        }
-      }
-    }
-
-    cargarListado();
-    return () => controlador.abort();
-  }, [autenticado, seccion, pagina, revisionListado, recuperarAcceso]);
+  }, [revisionSesion]);
 
   useEffect(() => () => referenciaOperacion.current?.abort(), []);
   useEffect(() => { if (errorOperacion) referenciaError.current?.focus(); }, [errorOperacion]);
-  useEffect(() => { if (mensajeExito) referenciaExito.current?.focus(); }, [mensajeExito]);
   useEffect(() => { if (autenticado) referenciaTitulo.current?.focus(); }, [autenticado]);
 
   // Una sola operación activa evita envíos duplicados incluso antes del siguiente render.
   function comenzarOperacion(nombre) {
-    if (referenciaOperacion.current || ocupadoProyectos) return null;
+    if (referenciaOperacion.current || ocupadoGestion) return null;
     const controlador = new AbortController();
     referenciaOperacion.current = controlador;
     establecerOperacion(nombre);
     establecerErrorOperacion("");
-    establecerMensajeExito("");
     return controlador;
   }
 
@@ -157,7 +131,6 @@ function PanelAdmin() {
       // El servidor regenera sesión y token al entrar: sustituimos ambos datos juntos.
       establecerEstadoSesion({ datos: respuesta.datos, cargando: false, error: "" });
       establecerAvisoSesion("");
-      establecerPagina(1);
       return true;
     } catch (error) {
       if (controlador.signal.aborted || error.name === "AbortError") return false;
@@ -180,85 +153,11 @@ function PanelAdmin() {
       if (controlador.signal.aborted) return;
       establecerAvisoSesion("Has cerrado sesión.");
       establecerEstadoSesion({ datos: null, cargando: true, error: "" });
-      establecerFotografiaEditada(null);
-      establecerPagina(1);
       // GET crea el token anónimo necesario para el siguiente inicio de sesión.
       establecerRevisionSesion((anterior) => anterior + 1);
     } catch (error) {
       if (controlador.signal.aborted || error.name === "AbortError") return;
       if (!(await recuperarAcceso(error, controlador.signal))) establecerErrorOperacion(error.message);
-    } finally {
-      terminarOperacion(controlador);
-    }
-  }
-
-  function limpiarFormulario() {
-    establecerFotografiaEditada(null);
-    establecerRevisionFormulario((anterior) => anterior + 1);
-    establecerErrorOperacion("");
-  }
-
-  function editarFotografia(fotografia) {
-    establecerFotografiaEditada(fotografia);
-    establecerRevisionFormulario((anterior) => anterior + 1);
-    establecerErrorOperacion("");
-    establecerMensajeExito("");
-  }
-
-  function informarResultadoIncierto(error) {
-    if (error.estado !== 503 || error.codigo !== "GUARDADO_NO_CONFIRMADO") return false;
-    // Un corte al confirmar puede suceder después de aplicar los cambios en MySQL.
-    // Solo consultamos el resultado: el formulario y la mutación no se repiten.
-    establecerErrorOperacion("No se ha podido confirmar el resultado. El listado se está actualizando: comprueba si la operación se aplicó antes de repetirla. Tus cambios se conservan en el formulario.");
-    establecerPagina(1);
-    establecerRevisionListado((anterior) => anterior + 1);
-    return true;
-  }
-
-  async function guardarFotografia(formulario) {
-    const controlador = comenzarOperacion("guardar");
-    if (!controlador) return false;
-    try {
-      const ruta = fotografiaEditada ? `/api/admin/fotografias/${fotografiaEditada.id}` : "/api/admin/fotografias";
-      const respuesta = await solicitarApi(ruta, {
-        method: fotografiaEditada ? "PUT" : "POST", body: formulario,
-        csrfToken: estadoSesion.datos.csrfToken, signal: controlador.signal,
-      });
-      if (controlador.signal.aborted) return false;
-      limpiarFormulario();
-      establecerMensajeExito(`«${respuesta.datos.titulo}» se ha guardado como ${respuesta.datos.estado === "publicado" ? "publicada" : "borrador"}.`);
-      establecerPagina(1);
-      establecerRevisionListado((anterior) => anterior + 1);
-      return true;
-    } catch (error) {
-      if (controlador.signal.aborted || error.name === "AbortError") return false;
-      if (informarResultadoIncierto(error)) return false;
-      if (!(await recuperarAcceso(error, controlador.signal))) establecerErrorOperacion(error.message);
-      return false;
-    } finally {
-      terminarOperacion(controlador);
-    }
-  }
-
-  async function eliminarFotografia(fotografia) {
-    const controlador = comenzarOperacion("eliminar");
-    if (!controlador) return false;
-    try {
-      await solicitarApi(`/api/admin/fotografias/${fotografia.id}`, {
-        method: "DELETE", csrfToken: estadoSesion.datos.csrfToken, signal: controlador.signal,
-      });
-      if (controlador.signal.aborted) return false;
-      if (fotografiaEditada?.id === fotografia.id) limpiarFormulario();
-      establecerMensajeExito(`Se ha eliminado «${fotografia.titulo}».`);
-      const ultimaPagina = Math.max(1, Math.ceil((listado.meta.total - 1) / listado.meta.limite));
-      establecerPagina((anterior) => Math.min(anterior, ultimaPagina));
-      establecerRevisionListado((anterior) => anterior + 1);
-      return true;
-    } catch (error) {
-      if (controlador.signal.aborted || error.name === "AbortError") return false;
-      if (informarResultadoIncierto(error)) return false;
-      if (!(await recuperarAcceso(error, controlador.signal))) establecerErrorOperacion(error.message);
-      return false;
     } finally {
       terminarOperacion(controlador);
     }
@@ -273,7 +172,6 @@ function PanelAdmin() {
   function cambiarSeccion(nuevaSeccion) {
     if (ocupado || nuevaSeccion === seccion) return;
     establecerErrorOperacion("");
-    establecerMensajeExito("");
     establecerSeccion(nuevaSeccion);
   }
 
@@ -302,42 +200,34 @@ function PanelAdmin() {
         ) : (
           <>
             <nav className="nav nav-pills admin__secciones" aria-label="Secciones de administración">
-              <button type="button" className={"nav-link" + (seccion === "proyectos" ? " active" : "")}
-              data-seccion="proyectos" aria-pressed={seccion === "proyectos"}
-              aria-controls="gestion-proyectos" disabled={ocupado}
-              onClick={() => cambiarSeccion("proyectos")}>Proyectos</button>
-              <button type="button" className={"nav-link" + (seccion === "fotografias" ? " active" : "")}
-                data-seccion="fotografias" aria-pressed={seccion === "fotografias"}
-                aria-controls="gestion-fotografias" disabled={ocupado}
-                onClick={() => cambiarSeccion("fotografias")}>Fotografía</button>
+              {secciones.map((elemento) => (
+                <button key={elemento.recurso} type="button" className={"nav-link" + (seccion === elemento.recurso ? " active" : "")}
+                  data-seccion={elemento.recurso} aria-pressed={seccion === elemento.recurso}
+                  aria-controls={`gestion-${elemento.recurso}`} disabled={ocupado}
+                  onClick={() => cambiarSeccion(elemento.recurso)}>{elemento.titulo}</button>
+              ))}
             </nav>
             <div className="admin__introduccion">
               <div>
                 <p className="admin__etiqueta">Panel de administración</p>
-                <h1 ref={referenciaTitulo} tabIndex={-1}>{seccion === "proyectos" ? "Proyectos" : "Fotografía"}</h1>
+                <h1 ref={referenciaTitulo} tabIndex={-1}>{secciones.find((elemento) => elemento.recurso === seccion).titulo}</h1>
                 <p className="admin__texto">Sesión de {estadoSesion.datos.usuario?.usuario}. Publica, ordena y actualiza tu portfolio.</p>
               </div>
-              {seccion === "fotografias" && (
-                <button type="button" className="btn btn-outline-secondary" onClick={limpiarFormulario} disabled={ocupado}>Nueva fotografía</button>
-              )}
+
             </div>
             {errorOperacion && <p ref={referenciaError} className="alert alert-danger" role="alert" tabIndex={-1}>{errorOperacion}</p>}
-            {mensajeExito && <p ref={referenciaExito} className="alert alert-success" role="status" tabIndex={-1}>{mensajeExito}</p>}
-            <div id="gestion-fotografias" hidden={seccion !== "fotografias"}>
-              <div className="admin__columnas">
-              <FormularioFotografia key={revisionFormulario} fotografia={fotografiaEditada}
-                ocupado={ocupado} guardando={operacion === "guardar"} alGuardar={guardarFotografia}
-                alCancelar={limpiarFormulario} enfocarAlMontar={revisionFormulario > 0} />
-              <ListadoFotografias listado={listado} ocupado={ocupado} eliminando={operacion === "eliminar"}
-                alEditar={editarFotografia} alEliminar={eliminarFotografia} alCambiarPagina={establecerPagina}
-                alReintentar={() => establecerRevisionListado((anterior) => anterior + 1)} />
-              </div>
-            </div>
             <div id="gestion-proyectos" hidden={seccion !== "proyectos"}>
               <GestionProyectos activo={seccion === "proyectos"} bloqueado={Boolean(operacion)}
                 csrfToken={estadoSesion.datos.csrfToken}
-                alRecuperarAcceso={recuperarAcceso} alCambiarOcupado={cambiarOcupadoProyectos} />
+                alRecuperarAcceso={recuperarAcceso} alCambiarOcupado={cambiarOcupadoGestion} />
             </div>
+            {Object.values(galerias).map((galeria) => (
+              <div key={galeria.recurso} id={`gestion-${galeria.recurso}`} hidden={seccion !== galeria.recurso}>
+                <GestionGaleria galeria={galeria} activo={seccion === galeria.recurso} bloqueado={Boolean(operacion)}
+                  csrfToken={estadoSesion.datos.csrfToken}
+                  alRecuperarAcceso={recuperarAcceso} alCambiarOcupado={cambiarOcupadoGestion} />
+              </div>
+            ))}
           </>
         )}
       </main>

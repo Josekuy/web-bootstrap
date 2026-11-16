@@ -1,0 +1,29 @@
+.project-gallery-admin__list {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.project-gallery-admin__item {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 0.375rem;
+  overflow-wrap: anywhere;
+}
+
+.project-gallery-admin__preview {
+  display: block;
+  width: 100%;
+  height: 180px;
+  margin-bottom: 1rem;
+  object-fit: contain;
+}
+
+.project-gallery-admin__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

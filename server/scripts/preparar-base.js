@@ -1,9 +1,11 @@
 import mysql from "mysql2/promise";
 import { cargarConfiguracion } from "../src/configuracion.js";
 import { aplicarMigraciones } from "./migraciones.js";
+import { prepararAlmacenamientoGalerias } from "../src/modules/galerias/almacenamiento.js";
 
 const configuracion = cargarConfiguracion();
-const nombre = process.argv.includes("--pruebas") ? configuracion.basePruebas : configuracion.baseDatos.database;
+const esBasePruebas = process.argv.includes("--pruebas");
+const nombre = esBasePruebas ? configuracion.basePruebas : configuracion.baseDatos.database;
 const usuarioAplicacion = configuracion.baseDatos.user;
 if (!/^[a-zA-Z0-9_]{1,64}$/u.test(nombre) || !/^[a-zA-Z0-9_]{1,32}$/u.test(usuarioAplicacion)) {
   throw new Error("El nombre de la base o del usuario no es válido.");
@@ -28,6 +30,9 @@ try {
     ]);
     await conexion.query("GRANT SELECT, INSERT, UPDATE, DELETE ON " + mysql.escapeId(nombre)
       + ".* TO ?@'localhost'", [usuarioAplicacion]);
+  }
+  if (!esBasePruebas) {
+    await prepararAlmacenamientoGalerias({ pool: conexion, configuracion });
   }
   console.log("Base preparada: " + nombre + ". La cuenta de la API tiene permisos de lectura y escritura.");
 } finally {

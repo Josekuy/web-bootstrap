@@ -31,6 +31,7 @@
 export const navegacion = [
   { etiqueta: "Proyectos", href: "#proyectos" },
   { etiqueta: "Sobre mí", href: "#sobre-mi" },
+  { etiqueta: "Ilustración", href: "#ilustracion" },
   { etiqueta: "Fotografía", href: "#fotografia" },
   { etiqueta: "Contacto", href: "#contacto" },
 ];

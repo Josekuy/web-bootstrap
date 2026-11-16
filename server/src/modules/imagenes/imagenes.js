@@ -4,11 +4,12 @@ import { join, resolve } from "node:path";
 import { Router } from "express";
 import sharp from "sharp";
 import { ErrorAplicacion } from "../../errores.js";
+import { obtenerRecursoGaleria } from "../galerias/recursos.js";
+import { NOMBRE_IMAGEN } from "./nombres.js";
 
 const MAXIMO_BYTES = 8 * 1024 * 1024;
 const MAXIMO_PIXELES = 25_000_000;
 const MAXIMO_LADO = 2400;
-const NOMBRE_IMAGEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/u;
 const FIRMA_PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
 function crearErrorImagenNoValida() {
@@ -191,16 +192,18 @@ function crearErrorImagenNoEncontrada() {
 export function crearRutasImagenes({ pool, directorioImagenes, recurso = "fotografias" }) {
   // La tabla y la ruta se eligen entre constantes del servidor. Ningún dato de
   // la petición puede convertirse en un nombre de tabla o un directorio.
-  if (recurso !== "fotografias" && recurso !== "proyectos") {
-    throw new TypeError("El recurso de imágenes no está permitido.");
-  }
-  const ruta = recurso === "proyectos" ? "/api/imagenes/proyectos/:nombre" : "/api/imagenes/:nombre";
+  const tabla = recurso === "proyectos" ? "proyectos" : obtenerRecursoGaleria(recurso).tabla;
+  const rutasImagen = [`/api/imagenes/${tabla}/:nombre`];
+  // Las URL antiguas pertenecen al contenido ahora trasladado a Ilustración.
+  // El alias pasa por la misma consulta y las mismas comprobaciones de acceso.
+  if (recurso === "ilustraciones") rutasImagen.push("/api/imagenes/:nombre");
   const consulta = recurso === "proyectos"
-    ? "SELECT estado FROM proyectos WHERE nombre_archivo = ? LIMIT 1"
-    : "SELECT estado FROM fotografias WHERE nombre_archivo = ? LIMIT 1";
+    ? "SELECT estado FROM proyectos WHERE nombre_archivo = ? UNION ALL " +
+      "SELECT p.estado FROM proyecto_imagenes pi INNER JOIN proyectos p ON p.id = pi.proyecto_id WHERE pi.nombre_archivo = ? LIMIT 1"
+    : `SELECT estado FROM ${tabla} WHERE nombre_archivo = ? LIMIT 1`;
   const rutas = Router();
 
-  rutas.get(ruta, async (solicitud, respuesta) => {
+  rutas.get(rutasImagen, async (solicitud, respuesta) => {
     // También las respuestas de acceso denegado deben comprobarse de nuevo.
     respuesta.set("Cache-Control", "no-store");
     const nombre = solicitud.params.nombre;
@@ -208,7 +211,7 @@ export function crearRutasImagenes({ pool, directorioImagenes, recurso = "fotogr
 
     const [filas] = await pool.execute(
       consulta,
-      [nombre],
+      recurso === "proyectos" ? [nombre, nombre] : [nombre],
     );
     const registro = filas[0];
 

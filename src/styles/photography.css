@@ -1,235 +1,371 @@
-/* Galería horizontal: las imágenes mantienen su encuadre y los controles usan el tema del portfolio. */
+/* Book fotográfico: composición asimétrica y encuadres completos, sin reordenar el DOM. */
 .content-section.photography {
-  padding: 6rem 0 6.5rem;
+  padding: 6rem 0 7rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .photography__header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
-  align-items: end;
-  gap: 2rem 3rem;
-  margin-bottom: 2.75rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.75rem;
+  margin-bottom: 3.5rem;
 }
 
-.photography__heading {
+.photography__heading,
+.photography__introduction {
   min-width: 0;
 }
 
 .photography__heading .content-section__title {
   max-width: 12ch;
-  margin-bottom: 0;
-  font-size: clamp(2.6rem, 5vw, 5rem);
-  line-height: 1.04;
-  letter-spacing: -0.055em;
+  margin: 0;
+  font-size: clamp(3rem, 7vw, 6.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.065em;
 }
 
 .photography__intro {
-  max-width: 32ch;
-  margin: 0 0 0.2rem;
+  max-width: 35ch;
+  margin: 0;
   color: var(--color-muted);
   font-size: 0.95rem;
-  line-height: 1.85;
+  line-height: 1.9;
 }
 
-.photography__gallery {
-  min-width: 0;
+.photography__hint {
+  max-width: 35ch;
+  margin: 1.75rem 0 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
 }
 
-.photography__slider {
-  width: 100%;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.photography__slider:focus-visible {
-  outline: 3px solid var(--color-accent-text);
-  outline-offset: 6px;
-}
-
-.photography__slider .swiper-wrapper {
-  align-items: stretch;
-}
-
-.photography__slider .photography__slide {
-  display: flex;
-  height: auto;
-  min-width: 0;
-}
-
-.photography__item {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  min-width: 0;
-  height: 100%;
+.photography__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 3rem;
   margin: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
+  padding: 0;
+  list-style: none;
 }
 
-.photography__image-frame {
+.photography__entry,
+.photography__item {
+  min-width: 0;
+  margin: 0;
+}
+
+.photography__open {
   position: relative;
+  display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  max-height: min(70dvh, 700px);
-  overflow: hidden;
-  background: #121212;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.photography__open:focus-visible {
+  outline: 3px solid var(--color-accent-text);
+  outline-offset: 7px;
 }
 
 .photography__image {
   display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  /* La altura natural mantiene el formato que eligió quien hizo la fotografía. */
   object-fit: contain;
 }
 
-.photography .photography__open {
+.photography__zoom {
   position: absolute;
-  top: 1rem;
   right: 1rem;
+  bottom: 1rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 42px;
   height: 42px;
-  border: 1px solid rgb(255 255 255 / 55%);
+  border: 1px solid rgb(255 255 255 / 60%);
   border-radius: 50%;
   background: rgb(5 5 5 / 80%);
   color: #fff;
-  text-decoration: none;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-.photography__item:hover .photography__open,
-.photography__item:focus-within .photography__open {
+.photography__open:hover .photography__zoom,
+.photography__open:focus-visible .photography__zoom {
   opacity: 1;
-  transform: translateY(0);
-}
-
-.photography .photography__open:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: #050505;
+  transform: none;
 }
 
 .photography__caption {
-  flex: 1;
-  padding: 1.35rem 1.4rem 1.5rem;
-  border-top: 1px solid var(--color-border);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 1.15rem;
+  padding-top: 1.15rem;
   overflow-wrap: anywhere;
 }
 
-.photography__meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.85rem;
+.photography__number {
   color: var(--color-accent-text);
   font-family: var(--font-display);
   font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
 .photography__title {
-  margin: 0 0 0.65rem;
+  margin: 0;
   color: var(--color-text);
   font-family: var(--font-display);
-  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-size: clamp(0.9rem, 1.25vw, 1.1rem);
   font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.035em;
+  line-height: 1.4;
+  letter-spacing: -0.03em;
 }
 
 .photography__description {
-  margin: 0;
+  max-width: 48ch;
+  margin: 0.5rem 0 0;
   color: var(--color-muted);
-  font-size: 0.85rem;
-  line-height: 1.8;
+  font-size: 0.8rem;
+  line-height: 1.85;
 }
 
-.photography__footer {
-  /* Contador y barra arriba; las flechas ocupan una segunda fila centrada. */
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 1.25rem 1.75rem;
-  padding-top: 1.4rem;
+.photography__empty {
+  max-width: 50ch;
+  padding: 2rem 0;
+  border-top: 1px solid var(--color-border);
 }
 
-.photography__position {
-  margin: 0;
-  color: var(--color-text);
-  font-family: var(--font-display);
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.photography__progress {
-  min-width: 3rem;
-  height: 2px;
-  overflow: hidden;
-  background: var(--color-border);
-}
-
-.photography__progress::after {
-  content: "";
-  display: block;
-  width: calc(var(--photography-progress, 0) * 100%);
-  height: 100%;
-  background: var(--color-accent);
-  transition: width 0.3s ease;
-}
-
-.photography__controls {
-  grid-column: 1 / -1;
+.photography__more {
   display: flex;
-  justify-content: center;
-  gap: 0.65rem;
-}
-
-.photography__arrow {
-  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  padding: 0;
-  border: 1px solid var(--color-muted);
-  border-radius: 50%;
-  background: transparent;
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.photography__arrow:enabled:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent);
-  color: #050505;
-}
-
-.photography__arrow:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-.photography__arrow:focus-visible {
-  outline: 3px solid var(--color-accent-text);
-  outline-offset: 4px;
+  gap: 1rem 2rem;
+  margin-top: 4rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .photography__loaded {
   margin: 0;
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+}
+
+/* El diálogo nativo aporta la capa modal y mantiene inerte el contenido del fondo. */
+.photography__lightbox {
+  width: calc(100% - 2rem);
+  max-width: 1280px;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1.5rem 7rem rgb(0 0 0 / 30%);
+}
+
+.photography__lightbox::backdrop {
+  background: rgb(0 0 0 / 85%);
+}
+
+.photography__lightbox-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: min(88dvh, 950px);
+  max-height: calc(100dvh - 2rem);
+}
+
+.photography__lightbox-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.photography__lightbox-info {
+  max-height: 20dvh;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.photography__lightbox-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.photography__lightbox-description {
+  max-width: 80ch;
+  margin: 0.35rem 0 0;
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.8;
+}
+
+.photography__lightbox-image-frame {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.5rem;
+  background: #0c0c0c;
+}
+
+.photography__lightbox-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.photography__lightbox-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.photography__position {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.photography__lightbox-navigation {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.photography__lightbox-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text);
+}
+
+.photography__lightbox-button:enabled:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #050505;
+}
+
+.photography__lightbox-button:disabled {
+  opacity: 0.3;
+}
+
+.photography__lightbox-button:focus-visible,
+.photography__original:focus-visible {
+  outline: 3px solid var(--color-accent-text);
+  outline-offset: 4px;
+}
+
+.photography__original {
+  display: inline-flex;
+  justify-self: end;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.photography__original:hover {
+  color: var(--color-text);
+}
+
+@media (min-width: 768px) {
+  .photography__header {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem);
+    align-items: end;
+    gap: 3rem;
+    margin-bottom: 4.5rem;
+  }
+
+  .photography__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2rem;
+    row-gap: 4rem;
+  }
+
+  .photography__entry:nth-child(2n) {
+    margin-top: 3.5rem;
+  }
+}
+
+@media (min-width: 992px) {
+  .photography__grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    column-gap: clamp(1rem, 2.5vw, 2rem);
+    row-gap: 5rem;
+  }
+
+  .photography__entry:nth-child(6n + 1) {
+    grid-column: 1 / span 7;
+    margin-top: 0;
+  }
+
+  .photography__entry:nth-child(6n + 2) {
+    grid-column: 9 / span 4;
+    margin-top: 6rem;
+  }
+
+  .photography__entry:nth-child(6n + 3) {
+    grid-column: 2 / span 4;
+    margin-top: 0;
+  }
+
+  .photography__entry:nth-child(6n + 4) {
+    grid-column: 7 / span 6;
+    margin-top: 5rem;
+  }
+
+  .photography__entry:nth-child(6n + 5) {
+    grid-column: 1 / span 6;
+    margin-top: 0;
+  }
+
+  .photography__entry:nth-child(6n + 6) {
+    grid-column: 9 / span 4;
+    margin-top: 7rem;
+  }
 }
 
 @media (max-width: 767.98px) {
@@ -237,36 +373,63 @@
     padding: 4rem 0 4.5rem;
   }
 
-  .photography__header {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-    margin-bottom: 2rem;
-  }
-
   .photography__intro {
-    max-width: 40ch;
     font-size: 0.85rem;
   }
 
-  .photography__caption {
-    padding: 1.1rem;
+  .photography__hint {
+    margin-top: 1.25rem;
   }
 
-  .photography__footer {
-    gap: 1rem;
+  .photography__more {
+    margin-top: 3rem;
+  }
+
+  .photography__lightbox {
+    width: calc(100% - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .photography__lightbox-panel {
+    height: 92dvh;
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .photography__lightbox-header,
+  .photography__lightbox-footer {
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .photography__lightbox-image-frame {
+    padding: 0.75rem;
+  }
+
+  .photography__original span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .photography__original {
+    min-width: 42px;
+    min-height: 42px;
+    justify-content: center;
   }
 }
 
 @media (hover: none) {
-  .photography .photography__open {
+  .photography__zoom {
     opacity: 1;
     transform: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .photography .photography__open,
-  .photography__progress::after {
+  .photography__zoom {
     transition: none;
+    transform: none;
   }
 }
