@@ -2,6 +2,10 @@ import { ErrorAplicacion } from "../../errores.js";
 import { NOMBRE_IMAGEN } from "./nombres.js";
 
 const RECURSOS = ["fotografias", "ilustraciones", "proyectos"];
+const CODIGOS_SUPABASE_PERMITIDOS = new Set([
+  "AccessDenied", "InvalidBucketName", "InvalidJWT", "InvalidRequest",
+  "MissingParameter", "NoSuchBucket", "TenantNotFound",
+]);
 
 function errorAlmacenamiento() {
   return new ErrorAplicacion(503, "ALMACENAMIENTO_NO_DISPONIBLE", "No se ha podido acceder al almacenamiento de imágenes. Inténtalo de nuevo.");
@@ -75,8 +79,12 @@ export async function crearAlmacenesSupabase({ url, clave, bucket }, { solicitar
         || detalle?.code === "NoSuchKey";
       if (permiteAusente && ausente) throw errorAusente();
       const error = errorAlmacenamiento();
+      const codigoProveedor = CODIGOS_SUPABASE_PERMITIDOS.has(detalle?.code)
+        ? detalle.code
+        : detalle?.error === "Invalid JWT" ? "InvalidJWT" : "";
       error.code = respuesta.status === 409 || detalle?.code === "Duplicate"
-        ? "EEXIST" : `SUPABASE_HTTP_${respuesta.status}`;
+        ? "EEXIST"
+        : `SUPABASE_HTTP_${respuesta.status}${codigoProveedor ? `_${codigoProveedor}` : ""}`;
       throw error;
     }
     return respuesta;
