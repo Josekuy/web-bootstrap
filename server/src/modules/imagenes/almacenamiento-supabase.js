@@ -64,7 +64,9 @@ export async function crearAlmacenesSupabase({ url, clave, bucket }, { solicitar
       });
     } catch {
       // No se propagan el error de red, la URL ni las cabeceras privadas.
-      throw errorAlmacenamiento();
+      const error = errorAlmacenamiento();
+      error.code = "SUPABASE_RED_NO_DISPONIBLE";
+      throw error;
     }
     if (!respuesta.ok) {
       let detalle;
@@ -73,7 +75,8 @@ export async function crearAlmacenesSupabase({ url, clave, bucket }, { solicitar
         || detalle?.code === "NoSuchKey";
       if (permiteAusente && ausente) throw errorAusente();
       const error = errorAlmacenamiento();
-      if (respuesta.status === 409 || detalle?.code === "Duplicate") error.code = "EEXIST";
+      error.code = respuesta.status === 409 || detalle?.code === "Duplicate"
+        ? "EEXIST" : `SUPABASE_HTTP_${respuesta.status}`;
       throw error;
     }
     return respuesta;
