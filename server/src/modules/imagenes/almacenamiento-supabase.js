@@ -18,8 +18,11 @@ function comprobarNombre(nombre) {
 }
 
 function crearCabeceras(clave) {
-  // Las claves nuevas no son JWT: el gateway las recibe solo en apikey.
-  if (/^sb_secret_[a-zA-Z0-9_-]+$/u.test(clave)) return { apikey: clave };
+  // Storage utiliza la clave privada como credencial de servicio. Las claves
+  // nuevas no son JWT, pero su API admite el mismo valor como Bearer.
+  if (/^sb_secret_[a-zA-Z0-9_-]+$/u.test(clave)) {
+    return { apikey: clave, Authorization: "Bearer " + clave };
+  }
   let servicio = false;
   try {
     const partes = clave.split(".");

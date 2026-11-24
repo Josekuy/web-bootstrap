@@ -60,13 +60,13 @@ test("comparte los bytes en un bucket privado y separa las tres colecciones", as
   assert.deepEqual(await almacenes.fotografias.leer(NOMBRE), Buffer.from([0, 127, 255]));
   for (const { opciones } of servicio.llamadas) {
     assert.equal(opciones.headers.apikey, CONFIGURACION.clave);
-    assert.equal(Object.hasOwn(opciones.headers, "Authorization"), false);
+    assert.equal(opciones.headers.Authorization, "Bearer " + CONFIGURACION.clave);
     assert.equal(opciones.redirect, "error");
     assert.ok(opciones.signal instanceof AbortSignal);
   }
 });
 
-test("la clave secreta nueva solo viaja en apikey y la antigua service_role conserva Bearer", async () => {
+test("las claves privadas nueva y antigua autorizan las operaciones de Storage", async () => {
   for (const clave of [CONFIGURACION.clave, crearJwtPrueba("service_role")]) {
     const servicio = crearServicio();
     const almacenes = await crearAlmacenesSupabase({ ...CONFIGURACION, clave }, servicio);
@@ -75,8 +75,7 @@ test("la clave secreta nueva solo viaja en apikey y la antigua service_role cons
     await almacenes.proyectos.eliminar(NOMBRE);
     for (const { opciones } of servicio.llamadas) {
       assert.equal(opciones.headers.apikey, clave);
-      if (clave.startsWith("sb_secret_")) assert.equal(Object.hasOwn(opciones.headers, "Authorization"), false);
-      else assert.equal(opciones.headers.Authorization, "Bearer " + clave);
+      assert.equal(opciones.headers.Authorization, "Bearer " + clave);
     }
   }
 });
