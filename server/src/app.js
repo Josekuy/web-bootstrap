@@ -12,15 +12,22 @@ import { crearProteccionAcceso, crearRutasAcceso } from "./modules/auth/rutas.js
 import { crearRutasFotografias } from "./modules/fotografias/rutas.js";
 import { crearRutasIlustraciones } from "./modules/ilustraciones/rutas.js";
 import { crearRutasProyectos } from "./modules/proyectos/rutas.js";
+import { crearAlmacenesSupabase } from "./modules/imagenes/almacenamiento-supabase.js";
 
 // Inyectar configuración y pool permite probar la API con una base separada.
 export async function crearAplicacion({ configuracion, pool }) {
-  const directorioFotografias = configuracion.directorioImagenesFotografias || configuracion.directorioImagenes;
-  const directorioIlustraciones = configuracion.directorioImagenesIlustraciones
+  const almacenes = configuracion.almacenamientoImagenes?.proveedor === "supabase"
+    ? await crearAlmacenesSupabase(configuracion.almacenamientoImagenes) : null;
+  const directorioFotografias = almacenes?.fotografias
+    || configuracion.directorioImagenesFotografias || configuracion.directorioImagenes;
+  const directorioIlustraciones = almacenes?.ilustraciones || configuracion.directorioImagenesIlustraciones
     || path.join(directorioFotografias, "ilustraciones");
-  await mkdir(directorioFotografias, { recursive: true });
-  await mkdir(directorioIlustraciones, { recursive: true });
-  await mkdir(configuracion.directorioImagenesProyectos, { recursive: true });
+  const directorioProyectos = almacenes?.proyectos || configuracion.directorioImagenesProyectos;
+  if (!almacenes) {
+    await mkdir(directorioFotografias, { recursive: true });
+    await mkdir(directorioIlustraciones, { recursive: true });
+    await mkdir(directorioProyectos, { recursive: true });
+  }
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", configuracion.confiarProxy);
@@ -105,7 +112,7 @@ export async function crearAplicacion({ configuracion, pool }) {
   }));
   app.use(crearRutasProyectos({
     pool,
-    directorioImagenes: configuracion.directorioImagenesProyectos,
+    directorioImagenes: directorioProyectos,
     exigirAdmin: proteccion.exigirAdmin,
     exigirCsrf: proteccion.exigirCsrf,
   }));

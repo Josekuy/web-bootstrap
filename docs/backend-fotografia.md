@@ -2,6 +2,8 @@
 
 La portada obtiene proyectos, ilustraciones y fotografías mediante Express 5 y MySQL/MariaDB; `/admin` permite gestionar los tres recursos. Solo los textos permanecen en un archivo local. Este documento describe la implementación y su preparación para un despliegue; no implica que esté publicada en un servidor de producción.
 
+El flujo para compartir contenido entre equipos usando Render Free, TiDB y un bucket privado de Supabase está en [Datos compartidos](datos-compartidos.md). El almacenamiento local continúa siendo la opción por defecto. `IMAGE_STORAGE=supabase` sustituye las operaciones de archivo por almacenamiento remoto privado y conserva las comprobaciones de publicación y sesión de la API.
+
 ## Arquitectura
 
 ```mermaid
@@ -66,6 +68,10 @@ El error de Vite `ECONNREFUSED 127.0.0.1:3001` indica que Express no está escuc
 | `DB_ADMIN_USER`, `DB_ADMIN_PASSWORD` | Cuenta con permisos para crear esquema y conceder permisos; solo la usa el script de preparación. |
 | `ADMIN_USUARIO`, `ADMIN_CONTRASENA` | Creación inicial de administrador, no restablecimiento de contraseñas. |
 | `SESSION_SECRET` | Firma de sesiones, mínimo 32 caracteres; generado por la configuración local. |
+| `DB_SSL`, `DB_SSL_CA_FILE` | TLS verificado para la base remota (`DB_SSL=1`); CA adicional opcional. |
+| `IMAGE_STORAGE`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_STORAGE_BUCKET` | Proveedor `local` o `supabase`; URL, clave de servidor y bucket privado de imágenes. `SUPABASE_SERVICE_ROLE_KEY` se admite para configuraciones antiguas. |
+| `STORAGE_ROOT` | Raíz alternativa de los tres directorios de imágenes locales; relativa al proyecto o absoluta. |
+| `API_PROXY_TARGET` | Origen de la API para Vite y preview; por defecto API local. Un servidor compartido exige HTTPS y abre el panel en ese origen. |
 | `HOST`, `PORT` | Dirección de escucha de Express. |
 | `APP_ORIGINS` | Lista separada por comas de los orígenes permitidos para escrituras. |
 | `SERVER_ENV`, `NODE_ENV`, `TRUST_PROXY` | Modo del servidor y confianza en un proxy inverso. Usa `SERVER_ENV=development` en `.env`; reserva `NODE_ENV=production` para el proceso de despliegue. |
@@ -142,7 +148,7 @@ Las pruebas de integración usan la base separada `DB_TEST_NAME` y archivos temp
 
 Después de compilar y preparar la BD, `npm start` con `NODE_ENV=production` sirve API, `/`, `/admin` y los recursos de `dist/`. La configuración exige que `APP_ORIGINS` contenga únicamente los orígenes HTTPS reales; la cookie Secure requiere acceso HTTPS. El despliegue debe terminar TLS en el servidor frontal o proxy y dirigir interfaz y `/api` al mismo origen.
 
-Activa `TRUST_PROXY=1` solo cuando hay un proxy inverso de confianza delante de Node y el proceso no acepta conexiones directas de clientes. Monta `server/storage/` con sus tres subdirectorios sobre almacenamiento persistente: una nueva versión o reinicio del contenedor no debe eliminar sus archivos. `npm run preview` no sustituye este servidor ni prepara el backend.
+Activa `TRUST_PROXY=1` solo cuando hay un proxy inverso de confianza delante de Node y el proceso no acepta conexiones directas de clientes. Si utilizas almacenamiento local, monta `server/storage/` o `STORAGE_ROOT` con sus tres subdirectorios sobre almacenamiento persistente: una nueva versión o reinicio del contenedor no debe eliminar sus archivos. Si el alojamiento no ofrece disco persistente, utiliza el bucket privado con `IMAGE_STORAGE=supabase`. `npm run preview` utiliza el proxy configurado pero no sustituye este servidor ni prepara el backend.
 
 La separación por módulos permite ampliar el panel sin rehacer la portada. Para varias instancias, las sesiones MySQL ya pueden compartirse si utilizan la misma BD y secreto, pero faltan otras decisiones: los límites de peticiones actuales guardan contadores en memoria por instancia y deben usar un almacén compartido; las imágenes necesitan almacenamiento común o un servicio de objetos que mantenga el control de acceso de los borradores. También deben coordinarse migraciones, monitorización y copias. La capacidad debe medirse antes de ampliar réplicas, conexiones o límites.
 

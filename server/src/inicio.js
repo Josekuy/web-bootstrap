@@ -9,7 +9,9 @@ let servidor;
 let almacenSesiones;
 try {
   await pool.execute("SELECT 1");
-  await prepararAlmacenamientoGalerias({ pool, configuracion });
+  if (configuracion.almacenamientoImagenes?.proveedor !== "supabase") {
+    await prepararAlmacenamientoGalerias({ pool, configuracion });
+  }
   const aplicacion = await crearAplicacion({ configuracion, pool });
   almacenSesiones = aplicacion.almacenSesiones;
   servidor = await new Promise((resolver, rechazar) => {

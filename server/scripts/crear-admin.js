@@ -14,7 +14,7 @@ try {
   } else {
     const hash = await crearHashContrasena(contrasena);
     await pool.execute("INSERT INTO usuarios_admin (usuario, hash_contrasena) VALUES (?, ?)", [usuario, hash]);
-    console.log("Administrador creado. Consulta usuario y contraseña inicial en el archivo .env local.");
+    console.log("Administrador creado. Usa ADMIN_USUARIO y ADMIN_CONTRASENA de la configuración utilizada para este comando.");
   }
 } finally {
   await pool.end();

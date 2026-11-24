@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -21,12 +22,29 @@ export function cargarConfiguracion(cambios = {}) {
   if (produccion && origenes.some((origen) => !origen.startsWith("https://"))) {
     throw new Error("En producción APP_ORIGINS debe contener únicamente orígenes HTTPS.");
   }
+  const raizAlmacenamiento = process.env.STORAGE_ROOT
+    ? path.resolve(raizProyecto, process.env.STORAGE_ROOT) : path.join(raizProyecto, "server/storage");
+  const proveedorImagenes = process.env.IMAGE_STORAGE || "local";
+  if (!["local", "supabase"].includes(proveedorImagenes)) {
+    throw new Error("IMAGE_STORAGE debe ser local o supabase.");
+  }
+  if (![undefined, "", "0", "1"].includes(process.env.DB_SSL)) {
+    throw new Error("DB_SSL debe ser 0 o 1.");
+  }
+  const ssl = process.env.DB_SSL === "1" ? {
+    rejectUnauthorized: true,
+    verifyIdentity: true,
+    minVersion: "TLSv1.2",
+    ...(process.env.DB_SSL_CA_FILE ? {
+      ca: readFileSync(path.resolve(raizProyecto, process.env.DB_SSL_CA_FILE), "utf8"),
+    } : {}),
+  } : undefined;
   const directorioImagenesFotografias = cambios.directorioImagenesFotografias
-    || cambios.directorioImagenes || path.join(raizProyecto, "server/storage/fotografias");
+    || cambios.directorioImagenes || path.join(raizAlmacenamiento, "fotografias");
   const directorioImagenesIlustraciones = cambios.directorioImagenesIlustraciones
     || (cambios.directorioImagenes || cambios.directorioImagenesFotografias
       ? path.join(directorioImagenesFotografias, "ilustraciones")
-      : path.join(raizProyecto, "server/storage/ilustraciones"));
+      : path.join(raizAlmacenamiento, "ilustraciones"));
   return {
     produccion,
     puerto: Number(process.env.PORT || 3001),
@@ -36,7 +54,13 @@ export function cargarConfiguracion(cambios = {}) {
     confiarProxy: process.env.TRUST_PROXY === "1" ? 1 : false,
     nombreCookie: "portfolio.sid",
     duracionSesion: 8 * 60 * 60 * 1000,
-    directorioImagenesProyectos: path.join(raizProyecto, "server/storage/proyectos"),
+    directorioImagenesProyectos: path.join(raizAlmacenamiento, "proyectos"),
+    almacenamientoImagenes: {
+      proveedor: proveedorImagenes,
+      url: process.env.SUPABASE_URL || "",
+      clave: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+      bucket: process.env.SUPABASE_STORAGE_BUCKET || "portfolio",
+    },
     basePruebas,
     baseDatos: {
       host: process.env.DB_HOST || "127.0.0.1",
@@ -44,6 +68,7 @@ export function cargarConfiguracion(cambios = {}) {
       user: process.env.DB_USER || "portfolio_react_app",
       password: process.env.DB_PASSWORD || "",
       database: baseDatos,
+      ...(ssl ? { ssl } : {}),
     },
     ...cambios,
     // directorioImagenes conserva el nombre anterior para los consumidores existentes.

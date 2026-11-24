@@ -74,7 +74,7 @@ function registrarFalloArchivo(operacion, error) {
  * elige un nombre de archivo ni una ruta de almacenamiento.
  *
  * @param {{buffer: Buffer} | undefined} archivo Archivo recibido por multer.
- * @param {string} directorioImagenes Directorio privado fuera de public/.
+ * @param {string | {guardar: Function, leer: Function, eliminar: Function}} directorioImagenes Directorio privado o almacén remoto del servidor.
  * @returns {Promise<{nombreArchivo: string, ancho: number, alto: number, tamano: number}>}
  */
 export async function procesarYGuardarImagen(archivo, directorioImagenes) {
@@ -143,6 +143,10 @@ export async function procesarYGuardarImagen(archivo, directorioImagenes) {
   }
 
   const nombreArchivo = `${randomUUID()}.webp`;
+  if (typeof directorioImagenes !== "string") {
+    await directorioImagenes.guardar(nombreArchivo, resultado.data);
+    return { nombreArchivo, ancho: resultado.info.width, alto: resultado.info.height, tamano: resultado.data.length };
+  }
   const ruta = join(resolve(directorioImagenes), nombreArchivo);
 
   try {
@@ -175,6 +179,11 @@ export async function procesarYGuardarImagen(archivo, directorioImagenes) {
 export async function eliminarImagen(nombreArchivo, directorioImagenes) {
   if (!NOMBRE_IMAGEN.test(nombreArchivo)) {
     throw new ErrorAplicacion(500, "NOMBRE_IMAGEN_NO_VALIDO", "No se ha podido eliminar la imagen.");
+  }
+
+  if (typeof directorioImagenes !== "string") {
+    await directorioImagenes.eliminar(nombreArchivo);
+    return;
   }
 
   try {
@@ -222,6 +231,10 @@ export function crearRutasImagenes({ pool, directorioImagenes, recurso = "fotogr
     respuesta.type("image/webp");
 
     try {
+      if (typeof directorioImagenes !== "string") {
+        respuesta.send(await directorioImagenes.leer(nombre));
+        return;
+      }
       await new Promise((resolver, rechazar) => {
         respuesta.sendFile(
           nombre,

@@ -2,6 +2,8 @@
 
 Portfolio de diseño gráfico y desarrollo web con React, Vite, Bootstrap 5, CSS propio y Anime.js. Los proyectos, las ilustraciones y las fotografías se gestionan desde un panel con API Express y base MySQL/MariaDB. Los textos de la portada siguen en un archivo local.
 
+Para trabajar desde sobremesa y portátil con el mismo contenido, consulta [Datos compartidos y despliegue gratuito](docs/datos-compartidos.md). Git transporta el código; la base, las imágenes subidas y los secretos se gestionan por separado. El proyecto permite una API compartida, MySQL con TLS y un bucket privado de Supabase sin cambiar el flujo local descrito a continuación.
+
 ## Preparación local
 
 Requiere Node 22.12 o posterior y MySQL/MariaDB. En este entorno se utiliza XAMPP en el puerto 3306, con MariaDB 10.4.
@@ -105,7 +107,7 @@ Los comprobadores utilizan Chrome/Chromium instalado y un perfil temporal sin ve
 
 `comprobar:admin` recorre Ilustración y `comprobar:admin:fotografia` la nueva Fotografía. `comprobar:ilustracion` verifica el carrusel y `comprobar:galeria` el book y su visor. Estos dos últimos interceptan los listados en Chrome con imágenes sintéticas y no modifican los datos de MySQL.
 
-`npm run preview` permite previsualizar el resultado de Vite, pero no inicia Express ni configura su proxy de desarrollo. Para servir interfaz y API juntas se utiliza `npm start` con `NODE_ENV=production`, después de compilar y preparar la configuración HTTPS descrita en la guía del backend.
+`npm run preview` permite previsualizar el resultado de Vite y utiliza el proxy `/api` configurado, pero no inicia Express. `API_PROXY_TARGET` selecciona una API compartida HTTPS; sin configurar utiliza la API local. Con destino remoto, `/admin` abre el panel alojado. Para servir interfaz y API juntas se utiliza `npm start` con `NODE_ENV=production`, después de compilar y preparar la configuración HTTPS descrita en la guía del backend.
 
 - [Backend de proyectos y fotografía: configuración y despliegue](docs/backend-fotografia.md)
 - [Contrato de datos actual](docs/contrato-datos.md)
