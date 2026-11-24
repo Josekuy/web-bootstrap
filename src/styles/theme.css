@@ -1,0 +1,42 @@
+/* Paleta compartida. Las variables de luz y vidrio se usan en la portada. */
+:root {
+  --color-bg: #f3f5f8;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8faff;
+  --color-text: #18212e;
+  --color-muted: #505d6e;
+  --color-accent: #ff6245;
+  --color-accent-text: #a72f1a;
+  --color-border: #cdd4df;
+  --color-navbar: #101419;
+
+  --light-cool: rgb(116 163 255 / 0.22);
+  --light-accent: rgb(255 145 107 / 0.17);
+  --glass-surface: rgb(255 255 255 / 0.67);
+  --glass-highlight: rgb(255 255 255 / 0.82);
+  --glass-edge: rgb(98 118 150 / 0.24);
+  --glass-shadow: rgb(39 58 89 / 0.12);
+
+  --font-display: "Montserrat", sans-serif;
+  --font-body: "Merriweather", serif;
+  --tracking-display: -0.05em;
+  --transition: 0.3s ease;
+}
+
+html.dark-mode {
+  --color-bg: #101318;
+  --color-surface: #1b2028;
+  --color-surface-hover: #232b36;
+  --color-text: #f2f5fa;
+  --color-muted: #b0bccd;
+  --color-accent: #b6fa61;
+  --color-accent-text: #b6fa61;
+  --color-border: #343e4b;
+
+  --light-cool: rgb(109 147 255 / 0.17);
+  --light-accent: rgb(153 250 80 / 0.14);
+  --glass-surface: rgb(24 30 38 / 0.73);
+  --glass-highlight: rgb(189 212 255 / 0.12);
+  --glass-edge: rgb(189 212 255 / 0.21);
+  --glass-shadow: rgb(0 0 0 / 0.32);
+}

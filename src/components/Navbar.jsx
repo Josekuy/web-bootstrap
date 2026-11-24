@@ -62,7 +62,7 @@ function BarraNavegacion() {
   }
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top"
+    <nav className="navbar navbar-expand-lg navbar-dark sticky-top"
       aria-label="Navegación principal" onKeyDown={cerrarMenuConTeclado}>
       <div className="container">
         <a className="navbar-brand fw-bold" href="#inicio" onClick={navegarASeccion}>

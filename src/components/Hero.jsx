@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faArrowDown } from "@fortawesome/free-solid-svg-icons";
 import { presentacion } from "../data/contenido";
 
 // La presentación recibe contenido separado del diseño para poder alimentarse de una API.
@@ -17,7 +17,7 @@ function Presentacion({ datos = presentacion }) {
           <p className="hero__description">{datos.descripcion}</p>
           <a href={datos.accion.href} className="hero__button">
             {datos.accion.etiqueta}
-            <FontAwesomeIcon icon={faMagnifyingGlass} className="fs-4" />
+            <FontAwesomeIcon icon={faArrowDown} aria-hidden="true" />
           </a>
         </div>
       </div>

@@ -1,0 +1,211 @@
+/* La iluminación se pinta detrás de las tarjetas, como fondo de la sección. */
+.projects {
+  padding: clamp(4rem, 7vw, 6rem) 0 clamp(5rem, 8vw, 7rem);
+  background-image:
+    radial-gradient(ellipse 36rem 24rem at 9% 21rem, var(--light-accent), transparent),
+    radial-gradient(ellipse 42rem 28rem at 94% 27rem, var(--light-cool), transparent);
+}
+
+.projects__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 22rem);
+  align-items: end;
+  gap: 1rem 3rem;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+
+.projects__eyebrow,
+.project-card__meta {
+  color: var(--color-accent-text);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.projects__eyebrow {
+  margin: 0 0 0.75rem;
+}
+
+.projects__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 7vw, 6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+}
+
+.projects__intro {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.projects__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1.25rem, 2.6vw, 2.5rem);
+}
+
+/* El acabado de cristal lo dan el reflejo y el borde. El desenfoque es opcional. */
+.project-card {
+  --project-radius: 1.4rem;
+  --project-frame: 0.5rem;
+
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--project-frame);
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--project-radius);
+  background-color: var(--color-surface);
+  background-image: linear-gradient(150deg, var(--glass-highlight), transparent 58%);
+  box-shadow: 0 0.65rem 1.8rem var(--glass-shadow);
+  overflow-wrap: anywhere;
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+
+@supports (backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px)) {
+  .project-card {
+    background-color: var(--glass-surface);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+.project-card__image-wrapper {
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: calc(var(--project-radius) - var(--project-frame) - 1px);
+  background-color: var(--color-bg);
+}
+
+.project-card__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.project-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1.15rem clamp(0.8rem, 2vw, 1.25rem) 0.55rem;
+}
+
+.project-card__meta {
+  margin: 0 0 0.5rem;
+}
+
+.project-card__title {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1.8vw, 1.6rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+
+.project-card__description {
+  margin: 0 0 1.15rem;
+  color: var(--color-muted);
+  font-size: 0.86rem;
+  line-height: 1.7;
+}
+
+.project-card__technologies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.project-card__technologies li {
+  max-width: 100%;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 999px;
+  color: var(--color-muted);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.project-card__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 48px;
+  width: 100%;
+  margin-top: auto;
+  padding: 0.55rem 0;
+  border: 0;
+  border-top: 1px solid var(--glass-edge);
+  background-color: transparent;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+}
+
+.project-card__button-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--glass-edge);
+  border-radius: 50%;
+  color: var(--color-accent-text);
+  transition: background-color var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.project-card__button:is(:hover, :focus-visible) {
+  color: var(--color-accent-text);
+}
+
+.project-card__button:is(:hover, :focus-visible) .project-card__button-icon {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  color: #101419;
+}
+
+.project-card:focus-within {
+  border-color: var(--color-accent-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .project-card:hover {
+    border-color: var(--color-accent);
+    box-shadow: 0 1rem 2rem var(--glass-shadow);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .project-card:hover {
+    transform: translateY(-3px);
+  }
+}
+
+@media (max-width: 991.98px) {
+  .projects__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .projects__header,
+  .projects__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

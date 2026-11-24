@@ -69,7 +69,7 @@ Para actualizar una instalación existente, ejecuta `npm run db:preparar`: la mi
 
 La migración `005`, aplicada con el mismo comando, añade el resumen de la tarjeta sin modificar las descripciones anteriores. En el panel se edita un resumen breve de hasta 300 caracteres y una descripción detallada de hasta 5000 para la ficha. Si el resumen está vacío, la tarjeta muestra un extracto automático de hasta 180 caracteres. La descripción de la ficha conserva sus párrafos y saltos de línea.
 
-`src/App.jsx` organiza las secciones y carga el panel al visitar `/admin`. `src/styles/custom.css` y `custom_dark.css` definen ambos temas; `admin.css` contiene los estilos del panel. Se mantiene el grid personalizado de tres, dos y una columnas.
+`src/App.jsx` organiza las secciones y carga el panel al visitar `/admin`. `src/styles/theme.css` reúne las dos paletas y `admin.css` contiene los estilos del panel. La [guía visual](docs/diseno-visual.md) indica dónde ajustar la iluminación, el cristal de Proyectos y el marco de Fotografía.
 
 Ilustración conserva la galería horizontal Swiper, ahora en `Ilustracion.jsx` y `src/styles/illustration.css`: deslizamiento táctil, flechas, contador y teclado mientras el foco está dentro. Conserva los encuadres y la posición al cargar más resultados, sin avance automático.
 

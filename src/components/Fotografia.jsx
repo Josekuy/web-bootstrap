@@ -102,7 +102,7 @@ function Fotografia({ fotografias }) {
 
         {cantidad > 0 ? (
           <ol className="photography__grid" role="list" aria-label="Book de fotografía" aria-busy={usaApi && consulta.cargando}>
-            {publicadas.map((fotografia, indice) => (
+            {publicadas.map((fotografia) => (
               <li className="photography__entry" key={fotografia.id} data-orientacion={describirOrientacion(fotografia)}>
                 <figure className="photography__item">
                   <button className="photography__open" type="button" aria-haspopup="dialog"
@@ -113,11 +113,8 @@ function Fotografia({ fotografias }) {
                     <span className="photography__zoom" aria-hidden="true"><FontAwesomeIcon icon={faExpand} /></span>
                   </button>
                   <figcaption className="photography__caption">
-                    <span className="photography__number" aria-hidden="true">{String(indice + 1).padStart(2, "0")}</span>
-                    <div>
-                      <h3 className="photography__title">{fotografia.titulo}</h3>
-                      {fotografia.descripcion && <p className="photography__description">{fotografia.descripcion}</p>}
-                    </div>
+                    <h3 className="photography__title">{fotografia.titulo}</h3>
+                    {fotografia.descripcion && <p className="photography__description">{fotografia.descripcion}</p>}
                   </figcaption>
                 </figure>
               </li>

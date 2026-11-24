@@ -1,5 +1,6 @@
 import { useProyectos } from "../hooks/useProyectos";
 import TarjetaProyecto from "./ProjectCard";
+import "../styles/projects.css";
 
 // Una colección explícita permite probar la vista sin red; por defecto se consulta la API.
 function Proyectos({ listaProyectos }) {
@@ -24,8 +25,8 @@ function Proyectos({ listaProyectos }) {
         </div>
         {proyectosPublicados.length > 0 ? (
           <div className="projects__grid" aria-busy={usaApi && consulta.cargando}>
-            {proyectosPublicados.map((proyecto, indice) => (
-              <TarjetaProyecto key={proyecto.id} proyecto={proyecto} numero={indice + 1} />
+            {proyectosPublicados.map((proyecto) => (
+              <TarjetaProyecto key={proyecto.id} proyecto={proyecto} />
             ))}
           </div>
         ) : (!usaApi || (!consulta.cargando && !consulta.error)) && (

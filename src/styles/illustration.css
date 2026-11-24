@@ -20,7 +20,7 @@
   margin-bottom: 0;
   font-size: clamp(2.6rem, 5vw, 5rem);
   line-height: 1.04;
-  letter-spacing: -0.055em;
+  letter-spacing: var(--tracking-display);
 }
 
 .illustration__intro {

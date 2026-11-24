@@ -8,8 +8,8 @@ import Ilustracion from "./components/Ilustracion";
 import Fotografia from "./components/Fotografia";
 import Contacto from "./components/Contacto";
 
+import "./styles/theme.css";
 import "./styles/custom.css";
-import "./styles/custom_dark.css";
 
 // El código del panel se descarga solo al visitar /admin.
 const PanelAdmin = lazy(() => import("./admin/PanelAdmin"));

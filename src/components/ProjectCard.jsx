@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEye } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import DetalleProyecto from "./ProjectDetail";
 
 function resumirDescripcion(descripcion = "") {
@@ -12,7 +12,7 @@ function resumirDescripcion(descripcion = "") {
 }
 
 // Presenta el resumen y enlaza el botón con el modal de Bootstrap de este proyecto.
-function TarjetaProyecto({ proyecto, numero }) {
+function TarjetaProyecto({ proyecto }) {
   const identificadorModal = "detalle-proyecto-" + proyecto.id;
   const resumen = proyecto.resumen?.trim() || resumirDescripcion(proyecto.descripcion);
 
@@ -24,23 +24,23 @@ function TarjetaProyecto({ proyecto, numero }) {
             loading="lazy" decoding="async" />
         </div>
         <div className="project-card__body">
-          <div className="project-card__meta">
-            <span>{proyecto.categoria}</span>
-            <span>#{String(numero).padStart(2, "0")}</span>
-          </div>
+          <p className="project-card__meta">{proyecto.categoria}</p>
           <h3 className="project-card__title">{proyecto.titulo}</h3>
           <p className="project-card__description">{resumen}</p>
 
-          <div className="project-card__technologies" aria-label="Tecnologías utilizadas">
-            {proyecto.tecnologias.map((tecnologia) => (
-              <span key={tecnologia}>{tecnologia}</span>
-            ))}
-          </div>
+          {proyecto.tecnologias.length > 0 && (
+            <ul className="project-card__technologies" aria-label="Tecnologías utilizadas">
+              {proyecto.tecnologias.map((tecnologia) => <li key={tecnologia}>{tecnologia}</li>)}
+            </ul>
+          )}
           <button type="button" className="project-card__button"
             data-bs-toggle="modal" data-bs-target={"#" + identificadorModal}
             aria-controls={identificadorModal} aria-haspopup="dialog"
             aria-label={"Ver proyecto: " + proyecto.titulo}>
-            Ver proyecto <FontAwesomeIcon icon={faEye} />
+            Ver proyecto
+            <span className="project-card__button-icon" aria-hidden="true">
+              <FontAwesomeIcon icon={faArrowRight} />
+            </span>
           </button>
         </div>
       </article>
